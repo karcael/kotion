@@ -96,11 +96,12 @@ export function DocumentList({
             orderedIds: newDocs.map((d) => d.id),
           }),
         })
+        refresh()
       } catch (error) {
         console.error("Failed to save order:", error)
       }
     },
-    []
+    [refresh]
   )
 
   const handleDragStart = (index: number) => {

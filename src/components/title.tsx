@@ -18,6 +18,12 @@ export function Title({ initialTitle, onChange }: TitleProps) {
   // onChange referansını güncel tut ama effect'i tetikleme
   onChangeRef.current = onChange
 
+  // Prop değişikliklerini senkronize et (sayfa geçişlerinde)
+  useEffect(() => {
+    setTitle(initialTitle)
+    lastSavedRef.current = initialTitle
+  }, [initialTitle])
+
   // Sadece kullanıcı yazdığında ve değer değiştiğinde kaydet
   useEffect(() => {
     if (debouncedTitle === lastSavedRef.current) return

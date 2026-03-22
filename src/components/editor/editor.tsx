@@ -319,9 +319,10 @@ export function Editor({
     }
 
     const container = editorContainerRef.current
-    container?.addEventListener("click", handleClick)
-    return () => container?.removeEventListener("click", handleClick)
-  }, [router])
+    if (!container) return
+    container.addEventListener("click", handleClick)
+    return () => container.removeEventListener("click", handleClick)
+  }, [router, editor]) // editor hazır olduğunda ref de dolu olur
 
   if (!editor) return null
 

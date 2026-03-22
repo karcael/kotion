@@ -49,6 +49,16 @@ export default function DocumentPage() {
       })
   }, [documentId, router])
 
+  // Sekme başlığını güncelle
+  useEffect(() => {
+    if (document) {
+      window.document.title = `${document.title || "Adsız"} - Kotion`
+    }
+    return () => {
+      window.document.title = "Kotion"
+    }
+  }, [document?.title])
+
   const updateDocument = useCallback(
     async (updates: Partial<Document>) => {
       if (!documentId) return

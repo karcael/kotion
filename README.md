@@ -6,26 +6,35 @@ A self-hosted Notion alternative built with Next.js. Write, organize, and share 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED)
-![Version](https://img.shields.io/badge/Version-1.3-green)
+![Version](https://img.shields.io/badge/Version-1.3.1-green)
 
 ## Features
 
 ### Block Editor
-- Slash commands (`/`) with 15+ block types
+- Slash commands (`/`) with 15+ block types and keyboard navigation
 - Rich text: bold, italic, underline, strikethrough, code, highlight, links
-- Headings, bullet lists, numbered lists, task lists (with nesting)
+- Headings, bullet lists, numbered lists, task lists (with nesting via Tab/Shift+Tab)
 - Code blocks with syntax highlighting
-- Tables with add/remove rows & columns toolbar
-- Multi-column layouts (2, 3, 4 columns — responsive on mobile)
-- Image upload (drag & drop or URL) for inline images, covers, and icons
-- Page link blocks — embed clickable links to other pages inside notes
+- Tables with floating toolbar (add/remove rows & columns)
+- Multi-column layouts (2, 3, 4 columns — responsive on mobile/tablet)
+- Image upload (drag & drop or URL) for inline images, covers, and page icons
+- Page link blocks — embed navigable links to any page (including sub-pages)
 - Drag & drop block reordering with grab handles
+- Block context menu — click the handle to delete, duplicate, move, or convert block type
 - Floating formatting toolbar on text selection
 - Auto-save with debounce
+- Dynamic browser tab title (shows current page name)
+
+### Icons
+- 1700+ Lucide icons with 9 color options (gray, brown, orange, yellow, green, blue, purple, pink, red)
+- 500+ emojis across 10 categories
+- Custom image upload as page icon
+- Unified icon rendering across sidebar, search, invitations, and page links
 
 ### Organization
 - Nested page hierarchy with sidebar tree navigation
-- Page icons (emoji or custom image)
+- Drag & drop page reordering in sidebar
+- Page icons (emoji, colored Lucide icon, or custom image)
 - Cover images
 - Favorites
 - Trash & restore (soft delete)
@@ -33,17 +42,19 @@ A self-hosted Notion alternative built with Next.js. Write, organize, and share 
 
 ### Sharing & Collaboration
 - Share pages via email with Editor or Viewer roles
+- Custom role selector with descriptions
 - Invitation system with in-app accept/decline notifications
+- Cancel pending invitations
+- In-app confirmation dialogs (no browser alerts)
 - Access control: Owner, Editor, Viewer permissions (inherited through parent pages)
 - Live content sync between collaborators (polling-based, no page refresh needed)
-- Cancel pending invitations
 - Shared pages section in sidebar
 
 ### Design
-- Dark & light mode (system-aware)
+- Dark & light mode (system-aware with manual toggle)
 - Responsive design (desktop, tablet, mobile)
 - Notion-inspired minimal UI with smooth animations
-- Custom Kotion logo and favicon (auto dark/light mode)
+- Custom Kotion logo and SVG favicon (auto adapts to dark/light mode)
 
 ### Security
 - JWT authentication with HTTP-only cookies
@@ -63,6 +74,7 @@ A self-hosted Notion alternative built with Next.js. Write, organize, and share 
 | Styling | Tailwind CSS 4 |
 | Auth | JWT (jose + bcryptjs) |
 | State | Zustand |
+| Icons | Lucide React (1700+ icons) |
 | Deployment | Docker Compose |
 
 ## Quick Start with Docker
@@ -109,17 +121,17 @@ src/
 │   ├── (auth)/              Login & register
 │   ├── (main)/documents/    Main app with editor
 │   └── api/
-│       ├── auth/            Authentication
-│       ├── documents/       CRUD + collaborators
+│       ├── auth/            Authentication + collab token
+│       ├── documents/       CRUD + collaborators + reorder
 │       ├── invitations/     Sharing system
 │       ├── search/          Full-text search
 │       ├── upload/          File uploads
 │       └── files/           File serving
 ├── components/
-│   ├── editor/              Tiptap editor + extensions
-│   │   └── extensions/      Custom: columns, page-link, drag-handle
+│   ├── editor/              Tiptap editor + toolbars
+│   │   └── extensions/      Custom: columns, page-link
 │   ├── sidebar/             Navigation tree + sharing UI
-│   └── ...                  UI components
+│   └── ...                  UI components (icon picker, share dialog, etc.)
 ├── hooks/                   Custom React hooks
 ├── lib/                     Auth, Prisma, access control
 └── stores/                  Zustand state

@@ -186,23 +186,57 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(
   ({ items, command }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [showColumnPicker, setShowColumnPicker] = useState(false)
-    const [columnEditorRange, setColumnEditorRange] = useState<any>(null)
+    const [selectedColumnIndex, setSelectedColumnIndex] = useState(0)
     const scrollRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
       setSelectedIndex(0)
       setShowColumnPicker(false)
+      setSelectedColumnIndex(0)
     }, [items])
 
     useImperativeHandle(ref, () => ({
       onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+        // Sütun alt menüsü açıkken
         if (showColumnPicker) {
           if (event.key === "Escape") {
             setShowColumnPicker(false)
             return true
           }
+          if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+            setSelectedColumnIndex((prev) =>
+              (prev + COLUMN_OPTIONS.length - 1) % COLUMN_OPTIONS.length
+            )
+            return true
+          }
+          if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+            setSelectedColumnIndex((prev) =>
+              (prev + 1) % COLUMN_OPTIONS.length
+            )
+            return true
+          }
+          if (event.key === "Enter") {
+            const opt = COLUMN_OPTIONS[selectedColumnIndex]
+            const item = items[selectedIndex]
+            if (opt && item) {
+              command({
+                ...item,
+                submenu: false,
+                command: ({ editor, range }: any) => {
+                  editor
+                    .chain()
+                    .focus()
+                    .deleteRange(range)
+                    .insertContent(createColumnsContent(opt.count))
+                    .run()
+                },
+              })
+            }
+            return true
+          }
           return false
         }
+
         if (event.key === "ArrowUp") {
           setSelectedIndex((prev) => (prev + items.length - 1) % items.length)
           return true
@@ -215,6 +249,7 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(
           const item = items[selectedIndex]
           if (item?.submenu) {
             setShowColumnPicker(true)
+            setSelectedColumnIndex(0)
             return true
           }
           if (item) command(item)
@@ -225,7 +260,9 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(
     }))
 
     useEffect(() => {
-      const el = scrollRef.current?.children[selectedIndex] as HTMLElement | undefined
+      const container = scrollRef.current
+      if (!container) return
+      const el = container.querySelector(`[data-command-index="${selectedIndex}"]`) as HTMLElement | null
       el?.scrollIntoView({ block: "nearest" })
     }, [selectedIndex])
 
@@ -247,7 +284,7 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(
           const isSelected = index === selectedIndex
 
           return (
-            <div key={item.title}>
+            <div key={item.title} data-command-index={index}>
               <button
                 onClick={() => {
                   if (item.submenu) {
@@ -286,7 +323,7 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(
               {/* Sütun sayısı seçici — inline olarak altında açılır */}
               {item.submenu && showColumnPicker && isSelected && (
                 <div className="animate-slide-down mx-2 mb-1 mt-0.5 flex gap-1.5 rounded-xl bg-muted/50 p-2">
-                  {COLUMN_OPTIONS.map((opt) => (
+                  {COLUMN_OPTIONS.map((opt, colIdx) => (
                     <button
                       key={opt.count}
                       onClick={(e) => {
@@ -304,7 +341,11 @@ const CommandList = forwardRef<CommandListRef, CommandListProps>(
                           },
                         })
                       }}
-                      className="flex flex-1 flex-col items-center gap-1.5 rounded-lg px-2 py-2 transition-colors hover:bg-background"
+                      className={`flex flex-1 flex-col items-center gap-1.5 rounded-lg px-2 py-2 transition-colors ${
+                        colIdx === selectedColumnIndex
+                          ? "bg-background ring-2 ring-accent/30"
+                          : "hover:bg-background"
+                      }`}
                     >
                       <div className="flex gap-[3px]">
                         {Array.from({ length: opt.count }).map((_, i) => (
