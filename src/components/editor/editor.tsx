@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
@@ -21,7 +22,9 @@ import { TableMenu } from "./table-menu"
 import { ColumnsMenu } from "./columns-menu"
 import { Columns, Column } from "./extensions/columns"
 import { DragHandleReact } from "./drag-handle-react"
+import { PageLink } from "./extensions/page-link"
 import { ImageUploadDialog } from "@/components/image-upload-dialog"
+import { PageLinkDialog } from "@/components/page-link-dialog"
 
 const lowlight = createLowlight(common)
 
@@ -38,6 +41,7 @@ export function Editor({
   onChange,
   editable = true,
 }: EditorProps) {
+  const router = useRouter()
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -62,7 +66,11 @@ export function Editor({
     left: number
   } | null>(null)
   const [showImageDialog, setShowImageDialog] = useState(false)
+  const [showPageLinkDialog, setShowPageLinkDialog] = useState(false)
   const pendingImageRangeRef = useRef<{ from: number; to: number } | null>(
+    null
+  )
+  const pendingPageLinkRangeRef = useRef<{ from: number; to: number } | null>(
     null
   )
   const editorContainerRef = useRef<HTMLDivElement>(null)
@@ -107,10 +115,15 @@ export function Editor({
       TableRow,
       TableCell,
       TableHeader,
+      PageLink,
       SlashCommand.configure({
         onImageRequest: (range: { from: number; to: number }) => {
           pendingImageRangeRef.current = range
           setShowImageDialog(true)
+        },
+        onPageLinkRequest: (range: { from: number; to: number }) => {
+          pendingPageLinkRangeRef.current = range
+          setShowPageLinkDialog(true)
         },
       }),
     ],
@@ -263,6 +276,53 @@ export function Editor({
     setShowImageDialog(false)
   }
 
+  const handlePageLinkSelected = (page: { id: string; title: string; icon: string | null }) => {
+    if (!editor) return
+
+    const range = pendingPageLinkRangeRef.current
+    if (range) {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: "pageLink",
+          attrs: { pageId: page.id, title: page.title, icon: page.icon },
+        })
+        .run()
+      pendingPageLinkRangeRef.current = null
+    } else {
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "pageLink",
+          attrs: { pageId: page.id, title: page.title, icon: page.icon },
+        })
+        .run()
+    }
+    setShowPageLinkDialog(false)
+  }
+
+  // Sayfa bağlantısına tıklama: Next.js router (aynı sekmede SPA geçişi)
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement).closest("[data-page-navigate]")
+      if (link) {
+        e.preventDefault()
+        e.stopPropagation()
+        const pageId = link.getAttribute("data-page-navigate")
+        if (pageId) {
+          router.push(`/documents/${pageId}`)
+        }
+      }
+    }
+
+    const container = editorContainerRef.current
+    container?.addEventListener("click", handleClick)
+    return () => container?.removeEventListener("click", handleClick)
+  }, [router])
+
   if (!editor) return null
 
   return (
@@ -317,6 +377,16 @@ export function Editor({
           onClose={() => {
             setShowImageDialog(false)
             pendingImageRangeRef.current = null
+          }}
+        />
+      )}
+
+      {showPageLinkDialog && (
+        <PageLinkDialog
+          onSelect={handlePageLinkSelected}
+          onClose={() => {
+            setShowPageLinkDialog(false)
+            pendingPageLinkRangeRef.current = null
           }}
         />
       )}

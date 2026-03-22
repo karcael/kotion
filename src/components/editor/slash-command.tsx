@@ -25,6 +25,7 @@ import {
   Table,
   AlignLeft,
   Columns3,
+  FileText,
   type LucideIcon,
 } from "lucide-react"
 import { createColumnsContent } from "./extensions/columns"
@@ -33,7 +34,12 @@ interface CommandItem {
   title: string
   description: string
   icon: LucideIcon
-  command: (props: { editor: any; range: any; onImageRequest?: (range: { from: number; to: number }) => void }) => void
+  command: (props: {
+    editor: any
+    range: any
+    onImageRequest?: (range: { from: number; to: number }) => void
+    onPageLinkRequest?: (range: { from: number; to: number }) => void
+  }) => void
   submenu?: boolean
 }
 
@@ -130,6 +136,16 @@ const commands: CommandItem[] = [
         if (url) {
           editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
         }
+      }
+    },
+  },
+  {
+    title: "Sayfa Bağlantısı",
+    description: "Başka bir sayfaya bağlantı ekle",
+    icon: FileText,
+    command: ({ range, onPageLinkRequest }) => {
+      if (onPageLinkRequest) {
+        onPageLinkRequest(range)
       }
     },
   },
@@ -319,6 +335,7 @@ export const SlashCommand = Extension.create({
   addOptions() {
     return {
       onImageRequest: undefined as ((range: { from: number; to: number }) => void) | undefined,
+      onPageLinkRequest: undefined as ((range: { from: number; to: number }) => void) | undefined,
       suggestion: {
         char: "/",
       } as Partial<SuggestionOptions>,
@@ -327,12 +344,13 @@ export const SlashCommand = Extension.create({
 
   addProseMirrorPlugins() {
     const onImageRequest = this.options.onImageRequest
+    const onPageLinkRequest = this.options.onPageLinkRequest
     return [
       Suggestion({
         editor: this.editor,
         ...this.options.suggestion,
         command: ({ editor, range, props }: { editor: any; range: any; props: any }) => {
-          props.command({ editor, range, onImageRequest })
+          props.command({ editor, range, onImageRequest, onPageLinkRequest })
         },
         items: ({ query }: { query: string }) => {
           return commands.filter((item) =>

@@ -75,3 +75,42 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     )
   }
 }
+
+// DELETE /api/invitations/[invitationId] — Daveti iptal et (gönderen tarafından)
+export async function DELETE(request: Request, { params }: RouteParams) {
+  try {
+    const user = await getSession()
+    if (!user) {
+      return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 })
+    }
+
+    const { invitationId } = await params
+
+    const invitation = await prisma.invitation.findFirst({
+      where: {
+        id: invitationId,
+        inviterId: user.id,
+        status: "PENDING",
+      },
+    })
+
+    if (!invitation) {
+      return NextResponse.json(
+        { error: "Davet bulunamadı veya iptal edilemez" },
+        { status: 404 }
+      )
+    }
+
+    await prisma.invitation.delete({
+      where: { id: invitationId },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Delete invitation error:", error)
+    return NextResponse.json(
+      { error: "Davet iptal edilirken bir hata oluştu" },
+      { status: 500 }
+    )
+  }
+}

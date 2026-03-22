@@ -33,7 +33,7 @@ export function Toolbar({ document, onUpdate }: ToolbarProps) {
       {/* Paylaş butonu — sağ üst, her zaman görünür */}
       <button
         onClick={() => setShowShareDialog(true)}
-        className="absolute right-0 top-10 z-10 flex items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-all hover:bg-accent/20 active:scale-95"
+        className="absolute right-0 top-10 z-10 flex cursor-pointer items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-all hover:bg-accent/20 active:scale-95"
       >
         <Share2 className="h-3.5 w-3.5" />
         Paylaş

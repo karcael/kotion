@@ -171,11 +171,18 @@ export function Sidebar({ user }: SidebarProps) {
           <SharedList />
         </div>
 
+        {/* Sürüm bilgisi */}
+        <div className="px-5 py-1.5">
+          <span className="text-[10px] font-medium tracking-wider text-muted-foreground/40">
+            Kotion v1.2
+          </span>
+        </div>
+
         {/* Çöp kutusu */}
         <div className="border-t border-border/60 px-3 py-2">
           <button
             onClick={() => setShowTrash(true)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <Trash2 className="h-4 w-4" />
             <span>Çöp Kutusu</span>
