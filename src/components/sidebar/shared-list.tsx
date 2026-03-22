@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { FileIcon, Users } from "lucide-react"
+import { Users } from "lucide-react"
 import { useSidebar } from "@/stores/use-sidebar"
+import { PageIcon } from "@/components/page-icon"
 
 interface SharedDocument {
   id: string
@@ -52,19 +53,7 @@ export function SharedList() {
                 : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
             }`}
           >
-            {doc.icon ? (
-              doc.icon.startsWith("/") || doc.icon.startsWith("http") ? (
-                <img
-                  src={doc.icon}
-                  alt=""
-                  className="h-[15px] w-[15px] shrink-0 rounded-sm object-cover"
-                />
-              ) : (
-                <span className="shrink-0 text-[15px]">{doc.icon}</span>
-              )
-            ) : (
-              <FileIcon className="h-[15px] w-[15px] shrink-0 opacity-60" />
-            )}
+            <PageIcon icon={doc.icon} size={15} />
             <div className="flex-1 min-w-0">
               <span className="block truncate">{doc.title}</span>
             </div>

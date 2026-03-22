@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Check, X, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { useSidebar } from "@/stores/use-sidebar"
+import { PageIcon } from "@/components/page-icon"
 
 interface Invitation {
   id: string
@@ -74,13 +75,7 @@ export function InvitationList() {
           className="mb-1 rounded-lg bg-accent/5 px-2.5 py-2"
         >
           <p className="text-[12px] font-medium truncate flex items-center gap-1.5">
-            {inv.document.icon && (
-              inv.document.icon.startsWith("/") || inv.document.icon.startsWith("http") ? (
-                <img src={inv.document.icon} alt="" className="h-4 w-4 shrink-0 rounded-sm object-cover" />
-              ) : (
-                <span className="shrink-0">{inv.document.icon}</span>
-              )
-            )}
+            <PageIcon icon={inv.document.icon} size={14} />
             <span className="truncate">{inv.document.title}</span>
           </p>
           <p className="text-[11px] text-muted-foreground truncate">

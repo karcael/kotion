@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { FileIcon } from "lucide-react"
 import { Item } from "./item"
@@ -32,6 +32,10 @@ export function DocumentList({
   const [documents, setDocuments] = useState<Document[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+
+  // Sürükle-bırak state
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -81,6 +85,55 @@ export function DocumentList({
     }
   }
 
+  // Sıralama kaydet
+  const saveOrder = useCallback(
+    async (newDocs: Document[]) => {
+      try {
+        await fetch("/api/documents/reorder", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderedIds: newDocs.map((d) => d.id),
+          }),
+        })
+      } catch (error) {
+        console.error("Failed to save order:", error)
+      }
+    },
+    []
+  )
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) return
+    setDropIndex(index)
+  }
+
+  const handleDrop = (index: number) => {
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDropIndex(null)
+      return
+    }
+
+    const newDocs = [...documents]
+    const [moved] = newDocs.splice(dragIndex, 1)
+    newDocs.splice(index, 0, moved)
+    setDocuments(newDocs)
+    saveOrder(newDocs)
+    setDragIndex(null)
+    setDropIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDropIndex(null)
+  }
+
   if (loading && level === 0) {
     return (
       <div className="px-3">
@@ -104,8 +157,22 @@ export function DocumentList({
 
   return (
     <div className="px-3">
-      {documents.map((doc) => (
-        <div key={doc.id}>
+      {documents.map((doc, index) => (
+        <div
+          key={doc.id}
+          draggable={type === "all"}
+          onDragStart={() => handleDragStart(index)}
+          onDragOver={(e) => handleDragOver(e, index)}
+          onDrop={() => handleDrop(index)}
+          onDragEnd={handleDragEnd}
+          className={`${
+            dragIndex === index ? "opacity-40" : ""
+          } ${
+            dropIndex === index && dragIndex !== null
+              ? "border-t-2 border-accent"
+              : ""
+          }`}
+        >
           <Item
             id={doc.id}
             label={doc.title}

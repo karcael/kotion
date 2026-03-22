@@ -6,7 +6,7 @@ A self-hosted Notion alternative built with Next.js. Write, organize, and share 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED)
-![Version](https://img.shields.io/badge/Version-1.2-green)
+![Version](https://img.shields.io/badge/Version-1.3-green)
 
 ## Features
 

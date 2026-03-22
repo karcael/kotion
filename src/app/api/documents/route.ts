@@ -16,11 +16,27 @@ export async function GET(request: Request) {
     const favorites = searchParams.get("favorites") === "true"
     const archived = searchParams.get("archived") === "true"
     const shared = searchParams.get("shared") === "true"
+    const all = searchParams.get("all") === "true"
 
     // Paylaşılan dokümanlar
     if (shared) {
       const sharedDocs = await getSharedDocuments(user.id)
       return NextResponse.json(sharedDocs)
+    }
+
+    // Tüm sayfalar (alt sayfalar dahil) — sayfa bağlantısı dialogu için
+    if (all) {
+      const documents = await prisma.document.findMany({
+        where: { userId: user.id, isArchived: false },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          title: true,
+          icon: true,
+          parentId: true,
+        },
+      })
+      return NextResponse.json(documents)
     }
 
     const documents = await prisma.document.findMany({
@@ -34,7 +50,7 @@ export async function GET(request: Request) {
             ? {}
             : { parentId: null }),
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
         title: true,
@@ -46,6 +62,7 @@ export async function GET(request: Request) {
         parentId: true,
         createdAt: true,
         updatedAt: true,
+        position: true,
         _count: { select: { children: true } },
       },
     })

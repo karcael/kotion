@@ -42,6 +42,7 @@ model Document {
   isArchived  Boolean @default(false)
   isFavorite  Boolean @default(false)
   isPublished Boolean @default(false)
+  position    Int     @default(0)
 
   parentId String?
   parent   Document?  @relation("ParentChild", fields: [parentId], references: [id], onDelete: SetNull)

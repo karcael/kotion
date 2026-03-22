@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Search, FileIcon } from "lucide-react"
+import { Search } from "lucide-react"
+import { PageIcon } from "@/components/page-icon"
 import { useSearch } from "@/stores/use-search"
 import { useDebounce } from "@/hooks/use-debounce"
 
@@ -126,11 +127,7 @@ export function SearchCommand() {
                   : "text-foreground/80 hover:bg-foreground/[0.04]"
               }`}
             >
-              {result.icon ? (
-                <span className="text-lg">{result.icon}</span>
-              ) : (
-                <FileIcon className="h-4 w-4 text-muted-foreground" />
-              )}
+              <PageIcon icon={result.icon} size={16} />
               <span className="truncate">{result.title}</span>
             </button>
           ))}

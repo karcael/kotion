@@ -163,7 +163,7 @@ export function Sidebar({ user }: SidebarProps) {
         {/* Sayfalar */}
         <div className="mt-3 flex-1 overflow-y-auto">
           <p className="px-5 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            Sayfalar
+            Not Sayfaları
           </p>
           <DocumentList type="all" />
 
@@ -174,7 +174,7 @@ export function Sidebar({ user }: SidebarProps) {
         {/* Sürüm bilgisi */}
         <div className="px-5 py-1.5">
           <span className="text-[10px] font-medium tracking-wider text-muted-foreground/40">
-            Kotion v1.2
+            Kotion v1.3
           </span>
         </div>
 

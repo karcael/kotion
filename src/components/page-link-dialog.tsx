@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Search, FileIcon, X } from "lucide-react"
+import { Search, X, ChevronRight } from "lucide-react"
+import { PageIcon } from "./page-icon"
 
 interface PageItem {
   id: string
   title: string
   icon: string | null
+  parentId: string | null
 }
 
 interface PageLinkDialogProps {
@@ -22,9 +24,9 @@ export function PageLinkDialog({ onSelect, onClose }: PageLinkDialogProps) {
   const [loading, setLoading] = useState(true)
   const dialogRef = useRef<HTMLDivElement>(null)
 
-  // Tüm sayfaları yükle
+  // Tüm sayfaları yükle (alt sayfalar dahil)
   useEffect(() => {
-    fetch("/api/documents")
+    fetch("/api/documents?all=true")
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -47,7 +49,6 @@ export function PageLinkDialog({ onSelect, onClose }: PageLinkDialogProps) {
     setSelectedIndex(0)
   }, [query, pages])
 
-  // Dışına tıkla / ESC
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dialogRef.current && !dialogRef.current.contains(e.target as Node))
@@ -80,17 +81,13 @@ export function PageLinkDialog({ onSelect, onClose }: PageLinkDialogProps) {
     }
   }
 
-  const renderIcon = (icon: string | null) => {
-    if (!icon) return <FileIcon className="h-4 w-4 opacity-50" />
-    if (icon.startsWith("/") || icon.startsWith("http"))
-      return (
-        <img
-          src={icon}
-          alt=""
-          className="h-4 w-4 rounded-sm object-cover"
-        />
-      )
-    return <span className="text-sm">{icon}</span>
+  // Üst sayfa yolunu bul
+  const getParentPath = (page: PageItem): string => {
+    if (!page.parentId) return ""
+    const parent = pages.find((p) => p.id === page.parentId)
+    if (!parent) return ""
+    const grandPath = getParentPath(parent)
+    return grandPath ? `${grandPath} / ${parent.title}` : parent.title
   }
 
   return (
@@ -107,7 +104,7 @@ export function PageLinkDialog({ onSelect, onClose }: PageLinkDialogProps) {
           <h3 className="text-sm font-semibold">Sayfa Bağlantısı Ekle</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-foreground/5"
+            className="cursor-pointer rounded-lg p-1 text-muted-foreground transition-colors hover:bg-foreground/5"
           >
             <X className="h-4 w-4" />
           </button>
@@ -143,20 +140,30 @@ export function PageLinkDialog({ onSelect, onClose }: PageLinkDialogProps) {
               {query ? "Sonuç bulunamadı" : "Henüz sayfa yok"}
             </p>
           ) : (
-            filtered.map((page, index) => (
-              <button
-                key={page.id}
-                onClick={() => onSelect(page)}
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                  index === selectedIndex
-                    ? "bg-accent/10 text-foreground"
-                    : "text-foreground/80 hover:bg-foreground/[0.04]"
-                }`}
-              >
-                {renderIcon(page.icon)}
-                <span className="truncate">{page.title}</span>
-              </button>
-            ))
+            filtered.map((page, index) => {
+              const parentPath = getParentPath(page)
+              return (
+                <button
+                  key={page.id}
+                  onClick={() => onSelect(page)}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                    index === selectedIndex
+                      ? "bg-accent/10 text-foreground"
+                      : "text-foreground/80 hover:bg-foreground/[0.04]"
+                  }`}
+                >
+                  <PageIcon icon={page.icon} size={16} />
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate">{page.title}</span>
+                    {parentPath && (
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60 truncate">
+                        {parentPath}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              )
+            })
           )}
         </div>
       </div>

@@ -6,6 +6,7 @@ import { IconPicker } from "./icon-picker"
 import { ImageUploadDialog } from "./image-upload-dialog"
 import { ShareDialog } from "./share-dialog"
 import { Title } from "./title"
+import { PageIcon, parseIcon } from "./page-icon"
 
 interface ToolbarProps {
   document: {
@@ -15,11 +16,6 @@ interface ToolbarProps {
     coverImage: string | null
   }
   onUpdate: (updates: Record<string, unknown>) => void
-}
-
-function isImageUrl(icon: string | null): boolean {
-  if (!icon) return false
-  return icon.startsWith("/") || icon.startsWith("http")
 }
 
 export function Toolbar({ document, onUpdate }: ToolbarProps) {
@@ -43,25 +39,19 @@ export function Toolbar({ document, onUpdate }: ToolbarProps) {
         {/* Sayfa ikonu (emoji veya görsel) */}
         {document.icon ? (
           <div className="group/icon relative mb-4 inline-block">
-            {isImageUrl(document.icon) ? (
-              <button
-                onClick={() => setShowIconImageUpload(true)}
-                className="block overflow-hidden rounded-2xl transition-transform duration-150 hover:scale-105 active:scale-95"
-              >
-                <img
-                  src={document.icon}
-                  alt="Sayfa ikonu"
-                  className="h-[72px] w-[72px] object-cover"
-                />
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowIconPicker(true)}
-                className="text-6xl transition-transform duration-150 hover:scale-110 active:scale-95"
-              >
-                {document.icon}
-              </button>
-            )}
+            <button
+              onClick={() => {
+                const parsed = parseIcon(document.icon)
+                if (parsed.type === "image") {
+                  setShowIconImageUpload(true)
+                } else {
+                  setShowIconPicker(true)
+                }
+              }}
+              className="transition-transform duration-150 hover:scale-110 active:scale-95"
+            >
+              <PageIcon icon={document.icon} size={64} />
+            </button>
             <button
               onClick={() => onUpdate({ icon: null })}
               className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-popover text-muted-foreground shadow-md opacity-0 transition-all hover:text-foreground group-hover/icon:opacity-100"

@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
 import { useSidebar } from "@/stores/use-sidebar"
+import { PageIcon } from "@/components/page-icon"
 
 interface ItemProps {
   id: string
@@ -128,11 +129,9 @@ export function Item({
       )}
 
       {icon ? (
-        icon.startsWith("/") || icon.startsWith("http") ? (
-          <img src={icon} alt="" className="mr-1.5 h-[18px] w-[18px] shrink-0 rounded-sm object-cover" />
-        ) : (
-          <span className="mr-1.5 shrink-0 text-[15px]">{icon}</span>
-        )
+        <span className="mr-1.5 shrink-0">
+          <PageIcon icon={icon} size={16} />
+        </span>
       ) : DocumentIcon ? (
         <DocumentIcon className="mr-1.5 h-[15px] w-[15px] shrink-0 opacity-60" />
       ) : null}
