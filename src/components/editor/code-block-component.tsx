@@ -120,7 +120,7 @@ export function CodeBlockComponent({
 
       {/* Code content */}
       <pre>
-        <NodeViewContent as="code" />
+        <NodeViewContent as={"code" as any} />
       </pre>
     </NodeViewWrapper>
   )
