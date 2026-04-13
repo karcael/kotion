@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "@/stores/use-session"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
@@ -49,6 +50,7 @@ export function Editor({
   editable = true,
 }: EditorProps) {
   const router = useRouter()
+  const setSessionExpired = useSession((s) => s.setSessionExpired)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -255,6 +257,10 @@ export function Editor({
 
       try {
         const res = await fetch(`/api/documents/${documentId}`)
+        if (res.status === 401) {
+          setSessionExpired(true)
+          return
+        }
         if (!res.ok) return
         const data = await res.json()
 
@@ -285,7 +291,7 @@ export function Editor({
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [documentId, editor])
+  }, [documentId, editor, setSessionExpired])
 
   const handleImageSelected = (url: string) => {
     if (!editor) return

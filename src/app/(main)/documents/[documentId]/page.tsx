@@ -8,6 +8,8 @@ import { Banner } from "@/components/banner"
 import { Editor } from "@/components/editor/editor"
 import { Spinner } from "@/components/spinner"
 import { useSidebar } from "@/stores/use-sidebar"
+import { useSession } from "@/stores/use-session"
+import { toast } from "sonner"
 
 interface Document {
   id: string
@@ -26,9 +28,12 @@ export default function DocumentPage() {
   const router = useRouter()
   const refreshRef = useRef(useSidebar.getState().refresh)
   refreshRef.current = useSidebar.getState().refresh
+  const setSessionExpired = useSession((s) => s.setSessionExpired)
+  const sessionExpired = useSession((s) => s.sessionExpired)
   const [document, setDocument] = useState<Document | null>(null)
   const [loading, setLoading] = useState(true)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const latestContentRef = useRef<unknown>(null)
   const documentId = params?.documentId as string
 
   useEffect(() => {
@@ -41,8 +46,34 @@ export default function DocumentPage() {
         return res.json()
       })
       .then((data) => {
+        // Check localStorage for recovered content from an expired session
+        const recoveryKey = `kotion-recovery-${documentId}`
+        let hasRecovery = false
+        try {
+          const recoveryData = localStorage.getItem(recoveryKey)
+          if (recoveryData) {
+            const recovered = JSON.parse(recoveryData)
+            data.content = recovered
+            hasRecovery = true
+            localStorage.removeItem(recoveryKey)
+            toast.success("Kaydedilmemiş değişiklikler kurtarıldı.")
+          }
+        } catch {
+          localStorage.removeItem(recoveryKey)
+        }
         setDocument(data)
         setLoading(false)
+
+        // Save recovered content to server
+        if (hasRecovery) {
+          fetch(`/api/documents/${documentId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: data.content }),
+          }).catch(() => {
+            // Will be saved on next edit
+          })
+        }
       })
       .catch(() => {
         router.push("/documents")
@@ -75,20 +106,24 @@ export default function DocumentPage() {
       setDocument((prev) => (prev ? { ...prev, ...updates } : null))
 
       try {
-        await fetch(`/api/documents/${documentId}`, {
+        const res = await fetch(`/api/documents/${documentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
         })
+        if (res.status === 401) {
+          setSessionExpired(true)
+        }
       } catch (error) {
         console.error("Failed to update document:", error)
       }
     },
-    [documentId]
+    [documentId, setSessionExpired]
   )
 
   const handleContentChange = useCallback(
     (content: unknown) => {
+      latestContentRef.current = content
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
       }
@@ -98,6 +133,41 @@ export default function DocumentPage() {
     },
     [updateDocument]
   )
+
+  // Ctrl+S / Cmd+S: save immediately, bypass debounce
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault()
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current)
+          saveTimeoutRef.current = null
+        }
+        if (latestContentRef.current) {
+          updateDocument({ content: latestContentRef.current })
+          toast.success("Kaydedildi.")
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [updateDocument])
+
+  // Save content to localStorage when session expires (recovery mechanism)
+  useEffect(() => {
+    if (sessionExpired && latestContentRef.current && documentId) {
+      try {
+        const recoveryKey = `kotion-recovery-${documentId}`
+        localStorage.setItem(
+          recoveryKey,
+          JSON.stringify(latestContentRef.current)
+        )
+      } catch {
+        // localStorage full or unavailable - nothing we can do
+      }
+    }
+  }, [sessionExpired, documentId])
 
   useEffect(() => {
     return () => {
