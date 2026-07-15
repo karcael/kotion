@@ -4,39 +4,17 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "@/stores/use-session"
 import { useEditor, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Placeholder from "@tiptap/extension-placeholder"
-import TaskList from "@tiptap/extension-task-list"
-import TaskItem from "@tiptap/extension-task-item"
-import Image from "@tiptap/extension-image"
-import Highlight from "@tiptap/extension-highlight"
-import Underline from "@tiptap/extension-underline"
-import Link from "@tiptap/extension-link"
-import { TextStyle } from "@tiptap/extension-text-style"
-import Color from "@tiptap/extension-color"
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight"
-import { ReactNodeViewRenderer } from "@tiptap/react"
-import { CodeBlockComponent } from "./code-block-component"
-import { Table } from "@tiptap/extension-table"
-import { TableCellExtended } from "./extensions/table-cell-extended"
-import { TableHeaderExtended } from "./extensions/table-header-extended"
-import { TableRowExtended } from "./extensions/table-row-extended"
-import { common, createLowlight } from "lowlight"
-import { SlashCommand } from "./slash-command"
+import { getEditorExtensions } from "./extensions"
 import { BubbleMenuBar } from "./bubble-menu-bar"
 import { TableMenu } from "./table-menu"
 import { ColumnsMenu } from "./columns-menu"
-import { Columns, Column } from "./extensions/columns"
 import { DragHandleReact } from "./drag-handle-react"
 import { TableRowResize } from "./table-row-resize"
 import { ColumnResize } from "./column-resize"
-import { PageLink } from "./extensions/page-link"
 import { ImageUploadDialog } from "@/components/image-upload-dialog"
 import { PageLinkDialog } from "@/components/page-link-dialog"
 import { TextSelection } from "@tiptap/pm/state"
 import { stableStringify } from "@/lib/utils"
-
-const lowlight = createLowlight(common)
 
 interface EditorProps {
   documentId?: string
@@ -103,67 +81,16 @@ export function Editor({
 
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        codeBlock: false,
-        // Link ve Underline aşağıda özel yapılandırmayla ayrıca eklendiği için
-        // StarterKit'in kendi sürümlerini kapat (çift kayıt uyarısını önler).
-        link: false,
-        underline: false,
-        dropcursor: {
-          color: "var(--accent-c)",
-          width: 2,
-        },
-      }),
-      Placeholder.configure({
-        placeholder: ({ node }) => {
-          if (node.type.name === "heading") {
-            return `Başlık ${node.attrs.level}`
-          }
-          return "Yazmaya başlayın veya '/' tuşuna basın..."
-        },
-      }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Image.configure({
-        HTMLAttributes: { class: "rounded-lg max-w-full" },
-      }),
-      Highlight.configure({ multicolor: true }),
-      Underline,
-      Link.configure({
-        // Tüm bağlantı tıklamaları aşağıdaki tek handler'da yönetilir. Açık
-        // bırakılırsa sayfa bağlantısının <a>'sını da açar ve router.push ile
-        // birlikte çift açılmaya (hem yeni sekme hem aynı sekme) yol açar.
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "text-accent underline cursor-pointer",
-        },
-      }),
-      TextStyle,
-      Color,
-      CodeBlockLowlight.extend({
-        addNodeView() {
-          return ReactNodeViewRenderer(CodeBlockComponent)
-        },
-      }).configure({ lowlight }),
-      Columns,
-      Column,
-      Table.configure({ resizable: true, cellMinWidth: 80 }),
-      TableRowExtended,
-      TableCellExtended,
-      TableHeaderExtended,
-      PageLink,
-      SlashCommand.configure({
-        onImageRequest: (range: { from: number; to: number }) => {
-          pendingImageRangeRef.current = range
-          setShowImageDialog(true)
-        },
-        onPageLinkRequest: (range: { from: number; to: number }) => {
-          pendingPageLinkRangeRef.current = range
-          setShowPageLinkDialog(true)
-        },
-      }),
-    ],
+    extensions: getEditorExtensions({
+      onImageRequest: (range: { from: number; to: number }) => {
+        pendingImageRangeRef.current = range
+        setShowImageDialog(true)
+      },
+      onPageLinkRequest: (range: { from: number; to: number }) => {
+        pendingPageLinkRangeRef.current = range
+        setShowPageLinkDialog(true)
+      },
+    }),
     content: initialContent as Record<string, unknown> | undefined,
     editable,
     editorProps: {
