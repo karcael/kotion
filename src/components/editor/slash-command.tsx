@@ -394,8 +394,11 @@ export const SlashCommand = Extension.create({
           props.command({ editor, range, onImageRequest, onPageLinkRequest })
         },
         items: ({ query }: { query: string }) => {
+          // Türkçe locale: "BAŞLIK".toLowerCase() yanlış "başlik" üretir ve
+          // "başlık" ile eşleşmez; toLocaleLowerCase("tr") doğru eşleştirir.
+          const q = query.toLocaleLowerCase("tr")
           return commands.filter((item) =>
-            item.title.toLowerCase().includes(query.toLowerCase())
+            item.title.toLocaleLowerCase("tr").includes(q)
           )
         },
         render: () => {

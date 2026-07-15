@@ -104,8 +104,15 @@ export function IconPicker({ onSelect, onClose }: IconPickerProps) {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
     document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    document.addEventListener("keydown", handleEsc)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("keydown", handleEsc)
+    }
   }, [onClose])
 
   // Lucide ikon arama filtresi
@@ -164,7 +171,7 @@ export function IconPicker({ onSelect, onClose }: IconPickerProps) {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={tab === "emoji" ? "Emoji ara..." : "İkon ara (ör: home, star, lock)..."}
+          placeholder={tab === "emoji" ? "Kategori ara (örn. yüz, hayvan)..." : "İkon ara (örn. home, star, lock)..."}
           className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
           autoFocus
         />
@@ -198,11 +205,10 @@ export function IconPicker({ onSelect, onClose }: IconPickerProps) {
         {tab === "emoji" && (
           <>
             {Object.entries(EMOJI_CATEGORIES).map(([category, emojis]) => {
-              const q = search.toLowerCase()
-              const filtered = search
-                ? emojis.filter(() => category.toLowerCase().includes(q))
-                : emojis
-              if (filtered.length === 0) return null
+              const q = search.toLowerCase().trim()
+              // Emoji karakterlerinin anahtar kelimesi olmadığı için arama
+              // kategori adına göre filtreler; eşleşen kategorinin tümü gösterilir.
+              if (q && !category.toLowerCase().includes(q)) return null
 
               return (
                 <div key={category} className="mb-3">
@@ -210,7 +216,7 @@ export function IconPicker({ onSelect, onClose }: IconPickerProps) {
                     {category}
                   </p>
                   <div className="grid grid-cols-10 gap-0.5">
-                    {filtered.map((emoji, i) => (
+                    {emojis.map((emoji, i) => (
                       <button
                         key={i}
                         onClick={() => onSelect(emoji)}

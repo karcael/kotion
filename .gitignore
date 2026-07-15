@@ -39,6 +39,3 @@ next-env.d.ts
 
 # claude code
 .claude/
-
-# prisma
-/prisma/migrations/

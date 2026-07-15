@@ -33,6 +33,8 @@ import { ColumnResize } from "./column-resize"
 import { PageLink } from "./extensions/page-link"
 import { ImageUploadDialog } from "@/components/image-upload-dialog"
 import { PageLinkDialog } from "@/components/page-link-dialog"
+import { TextSelection } from "@tiptap/pm/state"
+import { stableStringify } from "@/lib/utils"
 
 const lowlight = createLowlight(common)
 
@@ -40,6 +42,10 @@ interface EditorProps {
   documentId?: string
   initialContent?: unknown
   onChange?: (content: unknown) => void
+  // Uzak (polling) bir güncelleme uygulandığında çağrılır. Yerel değişiklik
+  // değildir, bu yüzden kaydetmeyi tetiklemez; yalnızca üst bileşenin en güncel
+  // içeriği (Ctrl+S ve kurtarma için) bilmesini sağlar.
+  onRemoteUpdate?: (content: unknown) => void
   editable?: boolean
 }
 
@@ -47,16 +53,27 @@ export function Editor({
   documentId,
   initialContent,
   onChange,
+  onRemoteUpdate,
   editable = true,
 }: EditorProps) {
   const router = useRouter()
   const setSessionExpired = useSession((s) => s.setSessionExpired)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const onRemoteUpdateRef = useRef(onRemoteUpdate)
+  onRemoteUpdateRef.current = onRemoteUpdate
 
-  // Polling: son yerel değişiklik zamanı (yazarken polling güncellemeyi engelle)
+  // Polling durumu:
+  // - lastLocalEditRef: son yerel düzenleme zamanı (yazarken poll'u engeller).
+  // - lastLocalHashRef: editörün o an gösterdiği içeriğin kanonik hash'i.
+  // - lastRemoteHashRef: sunucuyla son mutabık kalınan içeriğin kanonik hash'i.
+  // İki ayrı hash, başarısız/uçuştaki bir kaydın ardından poll'un yerel
+  // değişiklikleri eski sunucu içeriğiyle ezmesini önler.
   const lastLocalEditRef = useRef(0)
-  const lastContentHashRef = useRef("")
+  const lastLocalHashRef = useRef("")
+  const lastRemoteHashRef = useRef("")
+  const dialogOpenRef = useRef(false)
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [bubbleMenuPos, setBubbleMenuPos] = useState<{
     top: number
@@ -89,6 +106,10 @@ export function Editor({
     extensions: [
       StarterKit.configure({
         codeBlock: false,
+        // Link ve Underline aşağıda özel yapılandırmayla ayrıca eklendiği için
+        // StarterKit'in kendi sürümlerini kapat (çift kayıt uyarısını önler).
+        link: false,
+        underline: false,
         dropcursor: {
           color: "var(--accent-c)",
           width: 2,
@@ -110,7 +131,10 @@ export function Editor({
       Highlight.configure({ multicolor: true }),
       Underline,
       Link.configure({
-        openOnClick: true,
+        // Tüm bağlantı tıklamaları aşağıdaki tek handler'da yönetilir. Açık
+        // bırakılırsa sayfa bağlantısının <a>'sını da açar ve router.push ile
+        // birlikte çift açılmaya (hem yeni sekme hem aynı sekme) yol açar.
+        openOnClick: false,
         HTMLAttributes: {
           class: "text-accent underline cursor-pointer",
         },
@@ -150,7 +174,7 @@ export function Editor({
     onUpdate: ({ editor }) => {
       lastLocalEditRef.current = Date.now()
       const json = editor.getJSON()
-      lastContentHashRef.current = JSON.stringify(json)
+      lastLocalHashRef.current = stableStringify(json)
       onChangeRef.current?.(json)
     },
     onSelectionUpdate: ({ editor }) => {
@@ -234,7 +258,8 @@ export function Editor({
       }
     },
     onBlur: () => {
-      setTimeout(() => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = setTimeout(() => {
         setBubbleMenuPos(null)
       }, 200)
     },
@@ -246,14 +271,43 @@ export function Editor({
     }
   }, [editor, editable])
 
+  // Editör hazır olduğunda hash'leri başlangıç içeriğiyle başlat; böylece açılıştan
+  // sonraki ilk poll, içerik aynıyken gereksiz bir setContent tetiklemez.
+  useEffect(() => {
+    if (!editor) return
+    const hash = stableStringify(editor.getJSON())
+    lastLocalHashRef.current = hash
+    lastRemoteHashRef.current = hash
+    // Yalnızca editör örneği oluşunca bir kez çalışır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor])
+
+  // Açılışta bekleyen blur zamanlayıcısını temizle.
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current)
+    }
+  }, [])
+
+  // Görsel/sayfa bağlantısı dialog'u açıkken polling uzak içeriği uygulamamalı;
+  // aksi halde kaydedilmiş ekleme aralığı (range) kayar.
+  useEffect(() => {
+    dialogOpenRef.current = showImageDialog || showPageLinkDialog
+  }, [showImageDialog, showPageLinkDialog])
+
 
   // === Polling: karşı tarafın değişikliklerini 3 saniyede bir kontrol et ===
   useEffect(() => {
     if (!documentId || !editor) return
 
+    // Poll'un uzak içeriği güvenle uygulayıp uygulayamayacağını belirler.
+    const canApplyRemote = () =>
+      Date.now() - lastLocalEditRef.current >= 3000 &&
+      !editor.view.composing && // IME kompozisyonunu bozma
+      !dialogOpenRef.current // açık dialog'un bekleyen aralığını kaydırma
+
     const interval = setInterval(async () => {
-      // Son 3 saniyede yazdıysa güncelleme yapma (çakışmayı önle)
-      if (Date.now() - lastLocalEditRef.current < 3000) return
+      if (!canApplyRemote()) return
 
       try {
         const res = await fetch(`/api/documents/${documentId}`)
@@ -266,32 +320,75 @@ export function Editor({
 
         if (!data.content) return
 
-        const remoteHash = JSON.stringify(data.content)
+        const remoteHash = stableStringify(data.content)
 
-        // İçerik değişmediyse atla
-        if (remoteHash === lastContentHashRef.current) return
+        // Sunucu içeriği son mutabık kalınandan değişmediyse atla.
+        if (remoteHash === lastRemoteHashRef.current) return
 
-        // Editör içeriğini güncelle (imleç pozisyonunu koru)
-        const { from, to } = editor.state.selection
-        editor.commands.setContent(data.content, { emitUpdate: false })
-        lastContentHashRef.current = remoteHash
+        // Sunucu, editörün mevcut içeriğiyle aynı hale geldiyse (kendi kaydımız
+        // işlendi) yalnızca işareti güncelle; yerel durumu ezme.
+        if (remoteHash === lastLocalHashRef.current) {
+          lastRemoteHashRef.current = remoteHash
+          return
+        }
 
-        // İmleç pozisyonunu geri yükle (güvenli sınırlarla)
-        try {
-          const maxPos = editor.state.doc.content.size
-          const safeFrom = Math.min(from, maxPos)
-          const safeTo = Math.min(to, maxPos)
-          editor.commands.setTextSelection({ from: safeFrom, to: safeTo })
-        } catch {
-          // İmleç geri yüklenemezse sorun değil
+        // Fetch süresince kullanıcı yazmış/dialog açmış olabilir; tekrar kontrol et.
+        if (!canApplyRemote()) return
+
+        // Karşı taraf farklı bir içerik yazmış: editörü güncelle. Bu değişikliği
+        // geri alma geçmişine ekleme ve yerel kaydetmeyi tetikleme.
+        const applied = applyRemoteContent(data.content)
+        // Bu uzak içeriği gördük; uygulanamasa bile hash'i güncelle ki her
+        // turda aynı (muhtemelen bozuk) içeriği yeniden denemeyelim.
+        lastRemoteHashRef.current = remoteHash
+        if (applied) {
+          lastLocalHashRef.current = remoteHash
+          onRemoteUpdateRef.current?.(data.content)
         }
       } catch {
-        // Sessiz hata
+        // Ağ hatası: sessizce geç, bir sonraki turda tekrar denenir.
       }
     }, 3000)
 
     return () => clearInterval(interval)
+    // applyRemoteContent editör kapanışında stabildir; bağımlılığa gerek yok.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, editor, setSessionExpired])
+
+  // Uzak içeriği editöre uygular: geçmişe eklemez, onUpdate tetiklemez ve
+  // imleç pozisyonunu güvenli sınırlar içinde korur. Başarılıysa true döner;
+  // geçersiz içerik/pozisyon hatasında editöre dokunmadan false döner.
+  const applyRemoteContent = useCallback(
+    (content: unknown): boolean => {
+      if (!editor) return false
+      const { state, view } = editor
+      try {
+        const node = state.schema.nodeFromJSON(
+          content as Record<string, unknown>
+        )
+        const { from, to } = state.selection
+        const tr = state.tr.replaceWith(0, state.doc.content.size, node.content)
+        tr.setMeta("addToHistory", false)
+        tr.setMeta("preventUpdate", true)
+
+        const newSize = tr.doc.content.size
+        const safeFrom = Math.min(from, newSize)
+        const safeTo = Math.min(to, newSize)
+        try {
+          tr.setSelection(TextSelection.create(tr.doc, safeFrom, safeTo))
+        } catch {
+          // İmleç geri yüklenemezse sorun değil.
+        }
+
+        view.dispatch(tr)
+        return true
+      } catch {
+        // Geçersiz içerik veya pozisyon: editöre dokunma.
+        return false
+      }
+    },
+    [editor]
+  )
 
   const handleImageSelected = (url: string) => {
     if (!editor) return
@@ -334,20 +431,39 @@ export function Editor({
     setShowPageLinkDialog(false)
   }
 
-  // Sayfa bağlantısına tıklama: Next.js router (aynı sekmede SPA geçişi)
+  // Bağlantı tıklamalarını yönet. Sayfa bağlantısında normal sol tık aynı
+  // sekmede SPA geçişi yapar; orta tık (tekerlek) ve Ctrl/Cmd/Shift+tık ise
+  // tarayıcının varsayılan "yeni sekme" davranışına bırakılır. Harici bağlantılar
+  // yeni sekmede açılır.
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      const link = (e.target as HTMLElement).closest("[data-page-navigate]")
-      if (link) {
+      const target = e.target as HTMLElement
+
+      const pageLink = target.closest("[data-page-navigate]")
+      if (pageLink) {
+        const pageId = pageLink.getAttribute("data-page-navigate")
+        if (!pageId) return
+        // Modifier'lı tık: tarayıcının yeni-sekme davranışını koru.
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return
         e.preventDefault()
         e.stopPropagation()
-        const pageId = link.getAttribute("data-page-navigate")
-        if (pageId) {
-          router.push(`/documents/${pageId}`)
+        router.push(`/documents/${pageId}`)
+        return
+      }
+
+      // Harici bağlantı (link mark): yeni sekmede aç.
+      const anchor = target.closest("a[href]") as HTMLAnchorElement | null
+      if (anchor) {
+        const href = anchor.getAttribute("href") || ""
+        if (/^https?:\/\//i.test(href)) {
+          e.preventDefault()
+          window.open(href, "_blank", "noopener,noreferrer")
         }
       }
     }
 
+    // Orta tık (tekerlek) "click" tetiklemez; sayfa bağlantısının <a href>'i
+    // sayesinde tarayıcı onu doğrudan yeni sekmede açar.
     const container = editorContainerRef.current
     if (!container) return
     container.addEventListener("click", handleClick)

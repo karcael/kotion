@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-in-production"
-)
+import { JWT_SECRET } from "@/lib/jwt-secret"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get("kotion-token")?.value
+  const isApiRoute = pathname.startsWith("/api")
 
   // Genel sayfalar - kimlik doğrulama gerekmez
   if (pathname === "/") {
@@ -41,8 +39,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Korunan rotalar - kimlik doğrulama gerekli
+  // Korunan rotalar - kimlik doğrulama gerekli.
+  // API rotalarında yönlendirme yerine 401 döndür; aksi halde fetch redirect'i
+  // izleyip HTML aldığından istemcideki oturum kontrolü (401) hiç tetiklenmez.
   if (!token) {
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Yetkisiz erişim." }, { status: 401 })
+    }
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
@@ -50,6 +53,12 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, JWT_SECRET)
     return NextResponse.next()
   } catch {
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: "Oturum süresi doldu." },
+        { status: 401 }
+      )
+    }
     return NextResponse.redirect(new URL("/login", request.url))
   }
 }

@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Undo, Trash2, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { useSidebar } from "@/stores/use-sidebar"
+import { ConfirmModal } from "@/components/confirm-modal"
 
 interface BannerProps {
   documentId: string
@@ -13,15 +15,18 @@ interface BannerProps {
 export function Banner({ documentId, onRestore }: BannerProps) {
   const router = useRouter()
   const { refresh } = useSidebar()
+  const [confirming, setConfirming] = useState(false)
 
   const handleDelete = async () => {
-    const confirmed = window.confirm(
-      "Bu sayfayı kalıcı olarak silmek istediğinize emin misiniz?"
-    )
-    if (!confirmed) return
-
+    setConfirming(false)
     try {
-      await fetch(`/api/documents/${documentId}`, { method: "DELETE" })
+      const res = await fetch(`/api/documents/${documentId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        toast.error("Silme başarısız.")
+        return
+      }
       toast.success("Sayfa kalıcı olarak silindi.")
       refresh()
       router.push("/documents")
@@ -42,12 +47,21 @@ export function Banner({ documentId, onRestore }: BannerProps) {
         Geri Yükle
       </button>
       <button
-        onClick={handleDelete}
+        onClick={() => setConfirming(true)}
         className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1 text-xs font-medium transition-colors hover:bg-white/20"
       >
         <Trash2 className="h-3 w-3" />
         Kalıcı Sil
       </button>
+
+      {confirming && (
+        <ConfirmModal
+          message="Bu sayfayı kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
+          confirmLabel="Kalıcı Sil"
+          onConfirm={handleDelete}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
     </div>
   )
 }

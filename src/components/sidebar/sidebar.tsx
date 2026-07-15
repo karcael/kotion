@@ -32,7 +32,7 @@ export function Sidebar({ user }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const search = useSearch()
-  const { isOpen, width, setWidth, setIsResizing, open, close, refresh } =
+  const { isOpen, isResizing, width, setWidth, setIsResizing, open, close, refresh } =
     useSidebar()
 
   const isResizingRef = useRef(false)
@@ -102,7 +102,7 @@ export function Sidebar({ user }: SidebarProps) {
       <aside
         className={`
           group/sidebar fixed left-0 top-0 z-50 flex h-full flex-col bg-sidebar
-          transition-all duration-200 ease-out
+          ${isResizing ? "" : "transition-all duration-200 ease-out"}
           ${isOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"}
         `}
         style={{ width: isMobile ? 260 : width }}
@@ -118,7 +118,8 @@ export function Sidebar({ user }: SidebarProps) {
           </button>
           <button
             onClick={close}
-            className="rounded-md p-1 text-muted-foreground opacity-0 transition-all hover:bg-foreground/5 hover:text-foreground group-hover/sidebar:opacity-100"
+            aria-label="Kenar çubuğunu daralt"
+            className="cursor-pointer rounded-md p-1 text-muted-foreground opacity-0 transition-all hover:bg-foreground/5 hover:text-foreground group-hover/sidebar:opacity-100"
           >
             <ChevronsLeft className="h-4 w-4" />
           </button>
@@ -206,7 +207,8 @@ export function Sidebar({ user }: SidebarProps) {
         <div className="fixed left-4 top-3.5 z-50">
           <button
             onClick={open}
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+            aria-label="Kenar çubuğunu aç"
+            className="cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <MenuIcon className="h-5 w-5" />
           </button>

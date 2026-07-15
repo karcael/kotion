@@ -24,19 +24,21 @@ export async function POST(request: Request) {
       )
     }
 
-    // Dosya türü doğrulama
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "image/svg+xml",
-    ]
-    if (!allowedTypes.includes(file.type)) {
+    // Dosya türü doğrulama. SVG script barındırabildiği için desteklenmez.
+    // Uzantı, istemcinin verdiği dosya adından değil doğrulanmış MIME türünden
+    // türetilir; böylece dizin geçişi ve sahte uzantı riski ortadan kalkar.
+    const typeToExt: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/gif": "gif",
+      "image/webp": "webp",
+    }
+    const ext = typeToExt[file.type]
+    if (!ext) {
       return NextResponse.json(
         {
           error:
-            "Desteklenmeyen dosya türü. Sadece JPEG, PNG, GIF, WebP ve SVG desteklenir.",
+            "Desteklenmeyen dosya türü. Sadece JPEG, PNG, GIF ve WebP desteklenir.",
         },
         { status: 400 }
       )
@@ -52,7 +54,6 @@ export async function POST(request: Request) {
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const ext = file.name.split(".").pop() || "png"
     const fileName = `${uuidv4()}.${ext}`
     const userDir = join(UPLOAD_DIR, user.id)
 

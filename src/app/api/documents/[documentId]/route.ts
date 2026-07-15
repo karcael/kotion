@@ -90,18 +90,39 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
+    let document
     if (body.isArchived === true) {
-      await archiveChildren(documentId)
+      // Sayfayı ve tüm alt ağacını tek transaction içinde arşivle.
+      const descendantIds = await collectDescendantIds(documentId)
+      document = await prisma.$transaction(async (tx) => {
+        if (descendantIds.length > 0) {
+          await tx.document.updateMany({
+            where: { id: { in: descendantIds } },
+            data: { isArchived: true },
+          })
+        }
+        return tx.document.update({ where: { id: documentId }, data: updateData })
+      })
+    } else if (body.isArchived === false && access.document.parentId) {
+      // Geri yüklerken arşivli üst zinciri de aynı transaction içinde geri yükle.
+      const ancestorIds = await collectArchivedAncestorIds(
+        access.document.parentId
+      )
+      document = await prisma.$transaction(async (tx) => {
+        if (ancestorIds.length > 0) {
+          await tx.document.updateMany({
+            where: { id: { in: ancestorIds } },
+            data: { isArchived: false },
+          })
+        }
+        return tx.document.update({ where: { id: documentId }, data: updateData })
+      })
+    } else {
+      document = await prisma.document.update({
+        where: { id: documentId },
+        data: updateData,
+      })
     }
-
-    if (body.isArchived === false && access.document.parentId) {
-      await restoreParentChain(access.document.parentId)
-    }
-
-    const document = await prisma.document.update({
-      where: { id: documentId },
-      data: updateData,
-    })
 
     return NextResponse.json(document)
   } catch (error) {
@@ -138,7 +159,11 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       )
     }
 
-    await deleteDocumentRecursive(documentId)
+    // Sayfayı ve tüm alt ağacını tek atomik işlemde sil.
+    const descendantIds = await collectDescendantIds(documentId)
+    await prisma.document.deleteMany({
+      where: { id: { in: [documentId, ...descendantIds] } },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -150,46 +175,46 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   }
 }
 
-async function archiveChildren(parentId: string) {
-  const children = await prisma.document.findMany({
-    where: { parentId },
-  })
-
-  for (const child of children) {
-    await prisma.document.update({
-      where: { id: child.id },
-      data: { isArchived: true },
+// Collects all descendant ids of a node level by level (one query per depth
+// level instead of one per node). Bounded to avoid runaway loops on cycles.
+async function collectDescendantIds(rootId: string): Promise<string[]> {
+  const ids: string[] = []
+  let frontier = [rootId]
+  let depth = 0
+  while (frontier.length > 0 && depth < 100) {
+    const children = await prisma.document.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true },
     })
-    await archiveChildren(child.id)
+    const childIds = children.map((c) => c.id)
+    if (childIds.length === 0) break
+    ids.push(...childIds)
+    frontier = childIds
+    depth++
   }
+  return ids
 }
 
-async function restoreParentChain(parentId: string) {
-  const parent = await prisma.document.findUnique({
-    where: { id: parentId },
-  })
-
-  if (parent && parent.isArchived) {
-    await prisma.document.update({
-      where: { id: parent.id },
-      data: { isArchived: false },
+// Collects ids of archived ancestors walking up the parent chain.
+async function collectArchivedAncestorIds(
+  parentId: string
+): Promise<string[]> {
+  const ids: string[] = []
+  let currentId: string | null = parentId
+  let depth = 0
+  while (currentId && depth < 100) {
+    const parent: {
+      id: string
+      isArchived: boolean
+      parentId: string | null
+    } | null = await prisma.document.findUnique({
+      where: { id: currentId },
+      select: { id: true, isArchived: true, parentId: true },
     })
-    if (parent.parentId) {
-      await restoreParentChain(parent.parentId)
-    }
+    if (!parent || !parent.isArchived) break
+    ids.push(parent.id)
+    currentId = parent.parentId
+    depth++
   }
-}
-
-async function deleteDocumentRecursive(documentId: string) {
-  const children = await prisma.document.findMany({
-    where: { parentId: documentId },
-  })
-
-  for (const child of children) {
-    await deleteDocumentRecursive(child.id)
-  }
-
-  await prisma.document.delete({
-    where: { id: documentId },
-  })
+  return ids
 }

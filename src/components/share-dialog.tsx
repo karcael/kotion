@@ -173,6 +173,15 @@ export function ShareDialog({ documentId, onClose }: ShareDialogProps) {
     fetchCollaborators()
   }, [documentId])
 
+  // Escape ile kapat (onay modalı açıkken kapatma).
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !confirmAction) onClose()
+    }
+    document.addEventListener("keydown", handleEsc)
+    return () => document.removeEventListener("keydown", handleEsc)
+  }, [onClose, confirmAction])
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim()) return
@@ -188,7 +197,7 @@ export function ShareDialog({ documentId, onClose }: ShareDialogProps) {
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error(data.error || "Davet gönderilemedi")
+        toast.error(data.error || "Davet gönderilemedi.")
         return
       }
 
@@ -211,10 +220,12 @@ export function ShareDialog({ documentId, onClose }: ShareDialogProps) {
             `/api/documents/${documentId}/collaborators?userId=${userId}`,
             { method: "DELETE" }
           )
-          if (res.ok) {
-            toast.success(`${name} kaldırıldı.`)
-            fetchCollaborators()
+          if (!res.ok) {
+            toast.error("Kaldırma başarısız.")
+            return
           }
+          toast.success(`${name} kaldırıldı.`)
+          fetchCollaborators()
         } catch {
           toast.error("Kaldırma başarısız.")
         }
@@ -231,10 +242,12 @@ export function ShareDialog({ documentId, onClose }: ShareDialogProps) {
           const res = await fetch(`/api/invitations/${invitationId}`, {
             method: "DELETE",
           })
-          if (res.ok) {
-            toast.success(`${invEmail} daveti iptal edildi.`)
-            fetchCollaborators()
+          if (!res.ok) {
+            toast.error("İptal başarısız.")
+            return
           }
+          toast.success(`${invEmail} daveti iptal edildi.`)
+          fetchCollaborators()
         } catch {
           toast.error("İptal başarısız.")
         }
@@ -269,7 +282,7 @@ export function ShareDialog({ documentId, onClose }: ShareDialogProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="E-Posta Adresi"
+                placeholder="E-posta adresi"
                 required
                 className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
               />

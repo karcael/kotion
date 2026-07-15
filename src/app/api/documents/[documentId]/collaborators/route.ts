@@ -23,6 +23,14 @@ export async function GET(request: Request, { params }: RouteParams) {
       )
     }
 
+    // İşbirlikçi ve davet e-postaları hassas bilgidir; yalnızca sahip görebilir.
+    if (access.role !== "OWNER") {
+      return NextResponse.json(
+        { error: "Bu işlem için sahip olmanız gerekiyor." },
+        { status: 403 }
+      )
+    }
+
     const [collaborators, invitations] = await Promise.all([
       prisma.collaborator.findMany({
         where: { documentId },

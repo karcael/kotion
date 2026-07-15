@@ -29,7 +29,7 @@ export default function RegisterPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || "Kayıt başarısız")
+        setError(data.error || "Kayıt başarısız.")
         return
       }
 
@@ -76,6 +76,7 @@ export default function RegisterPage() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Adınız Soyadınız"
               required
+              autoComplete="name"
               className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -91,6 +92,7 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="ornek@email.com"
               required
+              autoComplete="email"
               className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -107,6 +109,7 @@ export default function RegisterPage() {
               placeholder="••••••••"
               required
               minLength={6}
+              autoComplete="new-password"
               className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>

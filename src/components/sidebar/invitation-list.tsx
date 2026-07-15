@@ -47,15 +47,17 @@ export function InvitationList() {
         body: JSON.stringify({ status }),
       })
 
-      if (res.ok) {
-        if (status === "ACCEPTED") {
-          toast.success("Davet kabul edildi.")
-          refresh()
-        } else {
-          toast.success("Davet reddedildi.")
-        }
-        fetchInvitations()
+      if (!res.ok) {
+        toast.error("İşlem başarısız.")
+        return
       }
+      if (status === "ACCEPTED") {
+        toast.success("Davet kabul edildi.")
+        refresh()
+      } else {
+        toast.success("Davet reddedildi.")
+      }
+      fetchInvitations()
     } catch {
       toast.error("İşlem başarısız.")
     }

@@ -45,35 +45,42 @@ export default function DocumentPage() {
         if (!res.ok) throw new Error("Not found")
         return res.json()
       })
-      .then((data) => {
-        // Check localStorage for recovered content from an expired session
+      .then(async (data) => {
+        // Check localStorage for recovered content from an expired session.
         const recoveryKey = `kotion-recovery-${documentId}`
-        let hasRecovery = false
+        let recovered: unknown = null
         try {
           const recoveryData = localStorage.getItem(recoveryKey)
-          if (recoveryData) {
-            const recovered = JSON.parse(recoveryData)
-            data.content = recovered
-            hasRecovery = true
-            localStorage.removeItem(recoveryKey)
-            toast.success("Kaydedilmemiş değişiklikler kurtarıldı.")
-          }
+          if (recoveryData) recovered = JSON.parse(recoveryData)
         } catch {
           localStorage.removeItem(recoveryKey)
         }
+
+        if (recovered) {
+          // Persist recovered content to the server first, then open the editor
+          // with it. Only drop the local copy once the save succeeds so nothing
+          // is lost if the request fails (it is retried on the next open).
+          try {
+            const res = await fetch(`/api/documents/${documentId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ content: recovered }),
+              // Hung bir ağda editörün spinner'da takılı kalmaması için sınırla.
+              signal: AbortSignal.timeout(10000),
+            })
+            if (res.ok) {
+              data.content = recovered
+              latestContentRef.current = recovered
+              localStorage.removeItem(recoveryKey)
+              toast.success("Kaydedilmemiş değişiklikler kurtarıldı.")
+            }
+          } catch {
+            // Network error: keep the local copy for the next attempt.
+          }
+        }
+
         setDocument(data)
         setLoading(false)
-
-        // Save recovered content to server
-        if (hasRecovery) {
-          fetch(`/api/documents/${documentId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: data.content }),
-          }).catch(() => {
-            // Will be saved on next edit
-          })
-        }
       })
       .catch(() => {
         router.push("/documents")
@@ -91,8 +98,8 @@ export default function DocumentPage() {
   }, [document?.title])
 
   const updateDocument = useCallback(
-    async (updates: Partial<Document>) => {
-      if (!documentId) return
+    async (updates: Partial<Document>): Promise<boolean> => {
+      if (!documentId) return false
 
       const needsRefresh =
         "title" in updates ||
@@ -110,7 +117,14 @@ export default function DocumentPage() {
         })
         if (res.status === 401) {
           setSessionExpired(true)
-          return
+          return false
+        }
+        if (!res.ok) {
+          // Shared id keeps repeated debounced-save failures from stacking toasts.
+          toast.error("Değişiklikler kaydedilemedi.", {
+            id: "document-save-error",
+          })
+          return false
         }
         if (needsRefresh) {
           refreshRef.current()
@@ -118,8 +132,13 @@ export default function DocumentPage() {
             useSidebar.getState().clearTitleOverride(documentId)
           }
         }
+        return true
       } catch (error) {
         console.error("Failed to update document:", error)
+        toast.error("Değişiklikler kaydedilemedi.", {
+          id: "document-save-error",
+        })
+        return false
       }
     },
     [documentId, setSessionExpired]
@@ -133,6 +152,10 @@ export default function DocumentPage() {
       }
       saveTimeoutRef.current = setTimeout(() => {
         updateDocument({ content })
+        // Debounce ateşlendi; artık bekleyen kayıt yok. Bunu işaretlemek
+        // unmount/beforeunload flush'larının zaten kaydedilmiş içeriği yeniden
+        // yazmasını (ve iş birliğinde uzak düzenlemeyi ezmesini) önler.
+        saveTimeoutRef.current = null
       }, 1000)
     },
     [updateDocument]
@@ -140,7 +163,7 @@ export default function DocumentPage() {
 
   // Ctrl+S / Cmd+S: save immediately, bypass debounce
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault()
         if (saveTimeoutRef.current) {
@@ -148,8 +171,8 @@ export default function DocumentPage() {
           saveTimeoutRef.current = null
         }
         if (latestContentRef.current) {
-          updateDocument({ content: latestContentRef.current })
-          toast.success("Kaydedildi.")
+          const ok = await updateDocument({ content: latestContentRef.current })
+          if (ok) toast.success("Kaydedildi.")
         }
       }
     }
@@ -157,6 +180,23 @@ export default function DocumentPage() {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [updateDocument])
+
+  // Flush pending content when the tab is closed or reloaded (keepalive lets the
+  // request complete during unload).
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (saveTimeoutRef.current && latestContentRef.current && documentId) {
+        fetch(`/api/documents/${documentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: latestContentRef.current }),
+          keepalive: true,
+        }).catch(() => {})
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [documentId])
 
   // Save content to localStorage when session expires (recovery mechanism)
   useEffect(() => {
@@ -177,9 +217,21 @@ export default function DocumentPage() {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+        // Flush pending debounced content on unmount / document switch so the
+        // last edits are not dropped. No keepalive here: this is an SPA
+        // navigation (the page is not unloading), so a normal fetch completes
+        // and is not subject to the keepalive body-size limit.
+        if (latestContentRef.current && documentId) {
+          fetch(`/api/documents/${documentId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: latestContentRef.current }),
+          }).catch(() => {})
+        }
       }
     }
-  }, [])
+  }, [documentId])
 
   if (loading) {
     return (
@@ -208,11 +260,18 @@ export default function DocumentPage() {
       )}
 
       <div className="mx-auto max-w-4xl px-4 md:px-8 lg:px-12">
-        <Toolbar document={document} onUpdate={updateDocument} />
+        <Toolbar
+          document={document}
+          onUpdate={updateDocument}
+          isOwner={document.role === "OWNER"}
+        />
         <Editor
           documentId={documentId}
           initialContent={document.content}
           onChange={handleContentChange}
+          onRemoteUpdate={(content) => {
+            latestContentRef.current = content
+          }}
           editable={!document.isArchived && document.role !== "VIEWER"}
         />
       </div>

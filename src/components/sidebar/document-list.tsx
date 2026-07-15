@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { FileIcon } from "lucide-react"
+import { toast } from "sonner"
 import { Item } from "./item"
 import { useSidebar } from "@/stores/use-sidebar"
 
@@ -75,31 +76,37 @@ export function DocumentList({
         body: JSON.stringify({ title: "Adsız", parentId: docParentId }),
       })
 
-      if (res.ok) {
-        const doc = await res.json()
-        setExpanded((prev) => ({ ...prev, [docParentId]: true }))
-        refresh()
-        router.push(`/documents/${doc.id}`)
+      if (!res.ok) {
+        toast.error("Sayfa oluşturulamadı.")
+        return
       }
+      const doc = await res.json()
+      setExpanded((prev) => ({ ...prev, [docParentId]: true }))
+      refresh()
+      router.push(`/documents/${doc.id}`)
     } catch (error) {
       console.error("Failed to create document:", error)
+      toast.error("Sayfa oluşturulamadı.")
     }
   }
 
-  // Sıralama kaydet
+  // Sıralama kaydet. Başarısız olursa önceki sıraya geri dön.
   const saveOrder = useCallback(
-    async (newDocs: Document[]) => {
+    async (newDocs: Document[], prevDocs: Document[]) => {
       try {
-        await fetch("/api/documents/reorder", {
+        const res = await fetch("/api/documents/reorder", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             orderedIds: newDocs.map((d) => d.id),
           }),
         })
+        if (!res.ok) throw new Error("reorder failed")
         refresh()
       } catch (error) {
         console.error("Failed to save order:", error)
+        setDocuments(prevDocs)
+        toast.error("Sıralama kaydedilemedi.")
       }
     },
     [refresh]
@@ -122,11 +129,15 @@ export function DocumentList({
       return
     }
 
+    const prevDocs = documents
     const newDocs = [...documents]
     const [moved] = newDocs.splice(dragIndex, 1)
-    newDocs.splice(index, 0, moved)
+    // Gösterge hedefin üst kenarına çizilir ("hedefin önüne bırak"). Eleman
+    // kaldırıldıktan sonra aşağı yöndeki indeksler bir kayar; bunu telafi et.
+    const insertAt = dragIndex < index ? index - 1 : index
+    newDocs.splice(insertAt, 0, moved)
     setDocuments(newDocs)
-    saveOrder(newDocs)
+    saveOrder(newDocs, prevDocs)
     setDragIndex(null)
     setDropIndex(null)
   }

@@ -28,7 +28,7 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || "Giriş başarısız")
+        setError(data.error || "Giriş başarısız.")
         return
       }
 
@@ -75,6 +75,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="ornek@email.com"
               required
+              autoComplete="email"
               className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -91,6 +92,7 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               minLength={6}
+              autoComplete="current-password"
               className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm outline-none transition-all duration-200 placeholder:text-muted-foreground/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>

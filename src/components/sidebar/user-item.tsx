@@ -15,7 +15,7 @@ interface UserItemProps {
 
 export function UserItem({ user }: UserItemProps) {
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -56,17 +56,17 @@ export function UserItem({ user }: UserItemProps) {
           <div className="mx-2 my-1 h-px bg-border/60" />
           <button
             onClick={() => {
-              setTheme(theme === "dark" ? "light" : "dark")
+              setTheme(resolvedTheme === "dark" ? "light" : "dark")
               setShowMenu(false)
             }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-foreground/5"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-foreground/5"
           >
-            {theme === "dark" ? (
+            {resolvedTheme === "dark" ? (
               <Sun className="h-4 w-4" />
             ) : (
               <Moon className="h-4 w-4" />
             )}
-            {theme === "dark" ? "Aydınlık Mod" : "Karanlık Mod"}
+            {resolvedTheme === "dark" ? "Aydınlık Mod" : "Karanlık Mod"}
           </button>
           <button
             onClick={handleLogout}

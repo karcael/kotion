@@ -8,8 +8,9 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
+import { toast } from "sonner"
 import { useSidebar } from "@/stores/use-sidebar"
 import { PageIcon } from "@/components/page-icon"
 
@@ -43,6 +44,7 @@ export function Item({
   isFavorite,
 }: ItemProps) {
   const router = useRouter()
+  const params = useParams()
   const { refresh } = useSidebar()
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -61,15 +63,23 @@ export function Item({
     e.stopPropagation()
     setShowMenu(false)
     try {
-      await fetch(`/api/documents/${id}`, {
+      const res = await fetch(`/api/documents/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isArchived: true }),
       })
+      if (!res.ok) {
+        toast.error("Sayfa çöp kutusuna taşınamadı.")
+        return
+      }
       refresh()
-      router.push("/documents")
+      // Yalnızca arşivlenen sayfa o an açıksa karşılama ekranına dön.
+      if (params?.documentId === id) {
+        router.push("/documents")
+      }
     } catch (error) {
       console.error("Failed to archive:", error)
+      toast.error("Sayfa çöp kutusuna taşınamadı.")
     }
   }
 
@@ -77,14 +87,19 @@ export function Item({
     e.stopPropagation()
     setShowMenu(false)
     try {
-      await fetch(`/api/documents/${id}`, {
+      const res = await fetch(`/api/documents/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isFavorite: !isFavorite }),
       })
+      if (!res.ok) {
+        toast.error("İşlem başarısız.")
+        return
+      }
       refresh()
     } catch (error) {
       console.error("Failed to toggle favorite:", error)
+      toast.error("İşlem başarısız.")
     }
   }
 
@@ -150,6 +165,7 @@ export function Item({
               e.stopPropagation()
               setShowMenu(!showMenu)
             }}
+            aria-label="Sayfa menüsü"
             className="rounded-md p-1 transition-colors hover:bg-foreground/10"
           >
             <MoreHorizontal className="h-3.5 w-3.5" />
@@ -184,6 +200,7 @@ export function Item({
             e.stopPropagation()
             onCreate?.()
           }}
+          aria-label="Alt sayfa ekle"
           className="rounded-md p-1 transition-colors hover:bg-foreground/10"
         >
           <Plus className="h-3.5 w-3.5" />

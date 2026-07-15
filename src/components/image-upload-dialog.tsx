@@ -48,10 +48,9 @@ export function ImageUploadDialog({
         "image/png",
         "image/gif",
         "image/webp",
-        "image/svg+xml",
       ]
       if (!allowedTypes.includes(file.type)) {
-        setError("Sadece JPEG, PNG, GIF, WebP ve SVG desteklenir.")
+        setError("Sadece JPEG, PNG, GIF ve WebP desteklenir.")
         return
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -74,7 +73,7 @@ export function ImageUploadDialog({
           onSelect(data.url)
         } else {
           const data = await res.json()
-          setError(data.error || "Yükleme başarısız")
+          setError(data.error || "Yükleme başarısız.")
         }
       } catch {
         setError("Yükleme sırasında bir hata oluştu.")
@@ -191,7 +190,7 @@ export function ImageUploadDialog({
                     Tıklayın veya sürükleyin
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    PNG, JPG, GIF, WebP, SVG (maks 5MB)
+                    PNG, JPG, GIF, WebP (maks 5MB)
                   </p>
                 </>
               )}
@@ -221,7 +220,7 @@ export function ImageUploadDialog({
               <button
                 type="submit"
                 disabled={!url.trim()}
-                className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-md shadow-accent/20 transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
+                className="w-full cursor-pointer rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-md shadow-accent/20 transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Görseli Ekle
               </button>

@@ -14,6 +14,15 @@ export async function POST(request: Request) {
       )
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(normalizedEmail)) {
+      return NextResponse.json(
+        { error: "Geçerli bir e-posta adresi girin." },
+        { status: 400 }
+      )
+    }
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: "Şifre en az 6 karakter olmalıdır." },
@@ -22,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     })
 
     if (existingUser) {
@@ -35,7 +44,11 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword },
+      data: {
+        name: String(name).trim(),
+        email: normalizedEmail,
+        password: hashedPassword,
+      },
     })
 
     const token = await createToken(user.id, user.email)

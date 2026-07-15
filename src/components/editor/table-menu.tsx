@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import type { Editor } from "@tiptap/react"
+import { useEditorState } from "@tiptap/react"
 import {
   ArrowDownToLine,
   ArrowUpToLine,
@@ -33,13 +34,26 @@ export function TableMenu({ editor }: TableMenuProps) {
     editor.chain().focus().setCellAttribute(attr, value).run()
   }
 
-  // Read current cell attributes
-  const cellAttrs = editor.getAttributes("tableCell")
-  const headerAttrs = editor.getAttributes("tableHeader")
-  const currentTextAlign: TextAlign =
-    cellAttrs.textAlign || headerAttrs.textAlign || "left"
-  const currentVerticalAlign: VerticalAlign =
-    cellAttrs.verticalAlign || headerAttrs.verticalAlign || "top"
+  // Subscribe to editor state so the active-state highlights update immediately
+  // when a cell attribute changes (a cell-attribute change does not move the
+  // selection, so onSelectionUpdate alone would not re-render this menu).
+  const { currentTextAlign, currentVerticalAlign, isHeaderActive } =
+    useEditorState({
+      editor,
+      selector: ({ editor }) => {
+        const cellAttrs = editor.getAttributes("tableCell")
+        const headerAttrs = editor.getAttributes("tableHeader")
+        return {
+          currentTextAlign: (cellAttrs.textAlign ||
+            headerAttrs.textAlign ||
+            "left") as TextAlign,
+          currentVerticalAlign: (cellAttrs.verticalAlign ||
+            headerAttrs.verticalAlign ||
+            "top") as VerticalAlign,
+          isHeaderActive: editor.isActive("tableHeader"),
+        }
+      },
+    })
 
   const rowColItems = [
     {
@@ -138,7 +152,7 @@ export function TableMenu({ editor }: TableMenuProps) {
         onMouseDown={(e) => e.preventDefault()}
         title="Başlık satırı ekle/kaldır"
         className={`rounded-lg p-1.5 transition-all duration-150 ${
-          editor.isActive("tableHeader")
+          isHeaderActive
             ? "bg-accent/15 text-accent"
             : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
         }`}

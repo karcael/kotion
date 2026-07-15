@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/auth"
-import { getSharedDocuments } from "@/lib/document-access"
+import { getSharedDocuments, getDocumentWithAccess } from "@/lib/document-access"
 
 // GET /api/documents - Dokümanları listele
 export async function GET(request: Request) {
@@ -63,7 +63,9 @@ export async function GET(request: Request) {
         createdAt: true,
         updatedAt: true,
         position: true,
-        _count: { select: { children: true } },
+        // Yalnızca arşivlenmemiş çocukları say; aksi halde tüm çocukları çöpe
+        // taşınmış bir sayfada boş genişletme oku görünür.
+        _count: { select: { children: { where: { isArchived: false } } } },
       },
     })
 
@@ -87,6 +89,19 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const { title, parentId, content, icon } = body
+
+    // Bir üst sayfaya bağlanıyorsa, kullanıcının o sayfada en az düzenleme
+    // yetkisi olduğunu doğrula; aksi halde yabancı bir sayfanın altına ekleme
+    // (cross-tenant) yapılabilir.
+    if (parentId) {
+      const parentAccess = await getDocumentWithAccess(parentId, user.id)
+      if (!parentAccess || parentAccess.role === "VIEWER") {
+        return NextResponse.json(
+          { error: "Üst sayfaya erişim yetkiniz yok." },
+          { status: 403 }
+        )
+      }
+    }
 
     const document = await prisma.document.create({
       data: {

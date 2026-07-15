@@ -6,7 +6,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
-RUN npm ci --legacy-peer-deps
+RUN npm ci
 
 # ------- Uygulamayı derle -------
 FROM base AS builder
@@ -60,4 +60,6 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["sh", "-c", "prisma db push --schema=./prisma/schema.prisma --url $DATABASE_URL --accept-data-loss && node server.js"]
+# db push without --accept-data-loss: a destructive schema change stops startup
+# with an error instead of silently dropping production data.
+CMD ["sh", "-c", "prisma db push --schema=./prisma/schema.prisma --url $DATABASE_URL && node server.js"]

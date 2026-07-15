@@ -19,7 +19,16 @@ export async function POST(request: Request) {
       )
     }
 
-    if (email === user.email) {
+    if (role !== "EDITOR" && role !== "VIEWER") {
+      return NextResponse.json(
+        { error: "Geçersiz rol." },
+        { status: 400 }
+      )
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase()
+
+    if (normalizedEmail === user.email) {
       return NextResponse.json(
         { error: "Kendinizi davet edemezsiniz." },
         { status: 400 }
@@ -40,13 +49,13 @@ export async function POST(request: Request) {
 
     // Davet edilen kullanıcı sistemde var mı?
     const invitee = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       select: { id: true },
     })
 
     // Zaten davet edilmiş mi?
     const existing = await prisma.invitation.findUnique({
-      where: { documentId_email: { documentId, email } },
+      where: { documentId_email: { documentId, email: normalizedEmail } },
     })
 
     if (existing) {
@@ -59,15 +68,15 @@ export async function POST(request: Request) {
       // Bekleyen daveti güncelle
       const updated = await prisma.invitation.update({
         where: { id: existing.id },
-        data: { status: "PENDING", role: role as "EDITOR" | "VIEWER" },
+        data: { status: "PENDING", role },
       })
       return NextResponse.json(updated)
     }
 
     const invitation = await prisma.invitation.create({
       data: {
-        email,
-        role: role as "EDITOR" | "VIEWER",
+        email: normalizedEmail,
+        role,
         documentId,
         inviterId: user.id,
         inviteeId: invitee?.id || null,

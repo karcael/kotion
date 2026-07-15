@@ -17,9 +17,10 @@ interface ToolbarProps {
     coverImage: string | null
   }
   onUpdate: (updates: Record<string, unknown>) => void
+  isOwner?: boolean
 }
 
-export function Toolbar({ document, onUpdate }: ToolbarProps) {
+export function Toolbar({ document, onUpdate, isOwner = true }: ToolbarProps) {
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [showIconImageUpload, setShowIconImageUpload] = useState(false)
   const [showCoverUpload, setShowCoverUpload] = useState(false)
@@ -28,14 +29,16 @@ export function Toolbar({ document, onUpdate }: ToolbarProps) {
 
   return (
     <div className="relative pb-4 pt-10">
-      {/* Paylaş butonu — sağ üst, her zaman görünür */}
-      <button
-        onClick={() => setShowShareDialog(true)}
-        className="absolute right-0 top-10 z-10 flex cursor-pointer items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-all hover:bg-accent/20 active:scale-95"
-      >
-        <Share2 className="h-3.5 w-3.5" />
-        Paylaş
-      </button>
+      {/* Share button: top-right, owner only (invite/manage is owner-only) */}
+      {isOwner && (
+        <button
+          onClick={() => setShowShareDialog(true)}
+          className="absolute right-0 top-10 z-10 flex cursor-pointer items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-all hover:bg-accent/20 active:scale-95"
+        >
+          <Share2 className="h-3.5 w-3.5" />
+          Paylaş
+        </button>
+      )}
 
       <div className="group relative">
         {/* Sayfa ikonu (emoji veya görsel) */}
@@ -56,7 +59,8 @@ export function Toolbar({ document, onUpdate }: ToolbarProps) {
             </button>
             <button
               onClick={() => onUpdate({ icon: null })}
-              className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-popover text-muted-foreground shadow-md opacity-0 transition-all hover:text-foreground group-hover/icon:opacity-100"
+              aria-label="İkonu kaldır"
+              className="absolute -right-1.5 -top-1.5 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-popover text-muted-foreground shadow-md opacity-0 transition-all hover:text-foreground group-hover/icon:opacity-100"
             >
               <X className="h-3 w-3" />
             </button>

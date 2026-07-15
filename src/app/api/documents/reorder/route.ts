@@ -12,9 +12,12 @@ export async function PATCH(request: Request) {
 
     const { orderedIds } = await request.json()
 
-    if (!Array.isArray(orderedIds)) {
+    if (
+      !Array.isArray(orderedIds) ||
+      orderedIds.some((id) => typeof id !== "string")
+    ) {
       return NextResponse.json(
-        { error: "orderedIds dizisi gerekli." },
+        { error: "orderedIds bir string dizisi olmalı." },
         { status: 400 }
       )
     }

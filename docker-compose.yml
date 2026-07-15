@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: kotion
-      POSTGRES_PASSWORD: kotion
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-kotion}"
       POSTGRES_DB: kotion
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -20,13 +20,20 @@ services:
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
-      DATABASE_URL: "postgresql://kotion:kotion@postgres:5432/kotion"
-      JWT_SECRET: "${JWT_SECRET:-kotion-super-secret-jwt-key-change-in-production}"
-      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
+      DATABASE_URL: "postgresql://kotion:${POSTGRES_PASSWORD:-kotion}@postgres:5432/kotion"
+      # JWT_SECRET is required; startup fails if it is not set (no insecure default).
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in .env}"
       UPLOAD_DIR: "/app/data/uploads"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q --spider http://localhost:3000/login || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
     volumes:
       - uploads:/app/data/uploads
 

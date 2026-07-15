@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Search, Trash2, Undo, X } from "lucide-react"
 import { toast } from "sonner"
 import { useSidebar } from "@/stores/use-sidebar"
+import { ConfirmModal } from "@/components/confirm-modal"
 
 interface TrashDocument {
   id: string
@@ -17,11 +18,13 @@ interface TrashBoxProps {
 }
 
 export function TrashBox({ onClose }: TrashBoxProps) {
+  const params = useParams()
   const router = useRouter()
   const { refresh } = useSidebar()
   const [documents, setDocuments] = useState<TrashDocument[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   const fetchTrash = async () => {
     try {
@@ -41,13 +44,26 @@ export function TrashBox({ onClose }: TrashBoxProps) {
     fetchTrash()
   }, [])
 
+  // Escape ile kapat (onay modalı açıkken kapatma; onu ConfirmModal yönetir).
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !confirmId) onClose()
+    }
+    document.addEventListener("keydown", handleEsc)
+    return () => document.removeEventListener("keydown", handleEsc)
+  }, [onClose, confirmId])
+
   const handleRestore = async (id: string) => {
     try {
-      await fetch(`/api/documents/${id}`, {
+      const res = await fetch(`/api/documents/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isArchived: false }),
       })
+      if (!res.ok) {
+        toast.error("Geri yükleme başarısız.")
+        return
+      }
       toast.success("Sayfa geri yüklendi.")
       refresh()
       fetchTrash()
@@ -57,9 +73,18 @@ export function TrashBox({ onClose }: TrashBoxProps) {
   }
 
   const handleDelete = async (id: string) => {
+    setConfirmId(null)
     try {
-      await fetch(`/api/documents/${id}`, { method: "DELETE" })
+      const res = await fetch(`/api/documents/${id}`, { method: "DELETE" })
+      if (!res.ok) {
+        toast.error("Silme başarısız.")
+        return
+      }
       toast.success("Sayfa kalıcı olarak silindi.")
+      // Silinen sayfa o an açıksa kullanıcıyı ölü sayfada bırakma.
+      if (params?.documentId === id) {
+        router.push("/documents")
+      }
       refresh()
       fetchTrash()
     } catch {
@@ -82,6 +107,7 @@ export function TrashBox({ onClose }: TrashBoxProps) {
           <h3 className="text-sm font-semibold">Çöp Kutusu</h3>
           <button
             onClick={onClose}
+            aria-label="Çöp kutusunu kapat"
             className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -131,14 +157,16 @@ export function TrashBox({ onClose }: TrashBoxProps) {
                 <span className="flex-1 truncate">{doc.title}</span>
                 <button
                   onClick={() => handleRestore(doc.id)}
-                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+                  aria-label="Geri yükle"
+                  className="cursor-pointer rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
                   title="Geri Yükle"
                 >
                   <Undo className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => handleDelete(doc.id)}
-                  className="rounded-lg p-1.5 text-destructive/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setConfirmId(doc.id)}
+                  aria-label="Kalıcı olarak sil"
+                  className="cursor-pointer rounded-lg p-1.5 text-destructive/70 transition-colors hover:bg-destructive/10 hover:text-destructive"
                   title="Kalıcı Olarak Sil"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -148,6 +176,15 @@ export function TrashBox({ onClose }: TrashBoxProps) {
           )}
         </div>
       </div>
+
+      {confirmId && (
+        <ConfirmModal
+          message="Bu sayfayı kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz."
+          confirmLabel="Kalıcı Sil"
+          onConfirm={() => handleDelete(confirmId)}
+          onCancel={() => setConfirmId(null)}
+        />
+      )}
     </div>
   )
 }

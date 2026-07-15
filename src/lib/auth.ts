@@ -1,12 +1,9 @@
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { prisma } from "./prisma"
+import { JWT_SECRET } from "./jwt-secret"
 
 const COOKIE_NAME = "kotion-token"
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback-secret-change-in-production"
-)
 
 export const AUTH_COOKIE_NAME = COOKIE_NAME
 

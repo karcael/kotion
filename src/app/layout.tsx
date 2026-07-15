@@ -19,9 +19,15 @@ export default function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
+        {/*
+          Safety net for rare ProseMirror position RangeErrors during concurrent
+          edits. Position errors are handled locally in the editor; this only
+          suppresses the dev error overlay for them and no longer calls
+          stopImmediatePropagation, so other error listeners still run.
+        */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.addEventListener('error',function(e){if(e.error instanceof RangeError&&e.error.message.indexOf('Position')!==-1){e.preventDefault();e.stopImmediatePropagation();}},true);`,
+            __html: `window.addEventListener('error',function(e){if(e.error instanceof RangeError&&e.error.message.indexOf('Position')!==-1){e.preventDefault();}},true);`,
           }}
         />
       </head>

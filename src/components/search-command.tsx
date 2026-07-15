@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search } from "lucide-react"
 import { PageIcon } from "@/components/page-icon"
 import { useSearch } from "@/stores/use-search"
+import { useSession } from "@/stores/use-session"
 import { useDebounce } from "@/hooks/use-debounce"
 
 interface SearchResult {
@@ -17,6 +18,7 @@ interface SearchResult {
 export function SearchCommand() {
   const router = useRouter()
   const { isOpen, close } = useSearch()
+  const setSessionExpired = useSession((s) => s.setSessionExpired)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -39,14 +41,32 @@ export function SearchCommand() {
       return
     }
 
-    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setResults(data)
+    // AbortController, yavaş gelen eski bir yanıtın yeni sorgunun sonuçlarını
+    // ezmesini önler (yarış durumu).
+    const controller = new AbortController()
+
+    fetch(`/api/search?q=${encodeURIComponent(debouncedQuery)}`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (res.status === 401) {
+          setSessionExpired(true)
+          return
+        }
+        if (!res.ok) {
+          setResults([])
+          return
+        }
+        const data = await res.json()
+        setResults(Array.isArray(data) ? data : [])
         setSelectedIndex(0)
       })
-      .catch(console.error)
-  }, [debouncedQuery])
+      .catch((err) => {
+        if (err?.name !== "AbortError") console.error(err)
+      })
+
+    return () => controller.abort()
+  }, [debouncedQuery, setSessionExpired])
 
   useEffect(() => {
     if (!isOpen) {

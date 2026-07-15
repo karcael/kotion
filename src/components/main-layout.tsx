@@ -20,7 +20,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ user, children }: MainLayoutProps) {
-  const { isOpen, width } = useSidebar()
+  const { isOpen, width, isResizing } = useSidebar()
   const setSessionExpired = useSession((s) => s.setSessionExpired)
   const sessionExpired = useSession((s) => s.sessionExpired)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -40,12 +40,21 @@ export function MainLayout({ user, children }: MainLayoutProps) {
       }
     }
 
+    // Check immediately on mount and when the tab becomes visible again, not
+    // only every 5 minutes.
+    checkSession()
     intervalRef.current = setInterval(checkSession, SESSION_CHECK_INTERVAL)
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") checkSession()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
 
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
+      document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [sessionExpired, setSessionExpired])
 
@@ -53,7 +62,9 @@ export function MainLayout({ user, children }: MainLayoutProps) {
     <div className="flex h-screen">
       <Sidebar user={user} />
       <main
-        className="main-content flex-1 overflow-x-hidden overflow-y-auto transition-[margin-left] duration-200"
+        className={`main-content flex-1 overflow-x-hidden overflow-y-auto ${
+          isResizing ? "" : "transition-[margin-left] duration-200"
+        }`}
         style={{ marginLeft: isOpen ? `${width}px` : 0 }}
       >
         <SearchCommand />

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, FileText } from "lucide-react"
+import { toast } from "sonner"
 import { useSidebar } from "@/stores/use-sidebar"
 import { Logo } from "@/components/logo"
 import {
@@ -42,13 +43,16 @@ export default function DocumentsPage() {
         }),
       })
 
-      if (res.ok) {
-        const doc = await res.json()
-        refreshRef.current()
-        router.push(`/documents/${doc.id}`)
+      if (!res.ok) {
+        toast.error("Sayfa oluşturulamadı.")
+        return
       }
+      const doc = await res.json()
+      refreshRef.current()
+      router.push(`/documents/${doc.id}`)
     } catch (error) {
       console.error("Failed to create document:", error)
+      toast.error("Sayfa oluşturulamadı.")
     } finally {
       setCreating(null)
     }
