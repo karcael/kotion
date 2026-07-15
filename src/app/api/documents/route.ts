@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/auth"
 import { getSharedDocuments, getDocumentWithAccess } from "@/lib/document-access"
+import { extractPlainText } from "@/lib/tiptap-text"
 
 // GET /api/documents - Dokümanları listele
 export async function GET(request: Request) {
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
         title: title || "Adsız",
         parentId: parentId || null,
         userId: user.id,
-        ...(content ? { content } : {}),
+        ...(content ? { content, contentText: extractPlainText(content) } : {}),
         ...(icon ? { icon } : {}),
       },
     })

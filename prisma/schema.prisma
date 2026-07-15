@@ -37,6 +37,7 @@ model Document {
   id          String  @id @default(cuid())
   title       String  @default("Adsız")
   content     Json?
+  contentText String?
   icon        String?
   coverImage  String?
   isArchived  Boolean @default(false)

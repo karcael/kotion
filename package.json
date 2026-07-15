@@ -9,6 +9,7 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:backfill-content-text": "tsx scripts/backfill-content-text.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
