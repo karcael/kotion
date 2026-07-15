@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/auth"
+import { buildSnippet } from "@/lib/search-snippet"
 
 export async function GET(request: Request) {
   try {
@@ -10,19 +11,21 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url)
-    const query = searchParams.get("q")
-
-    if (!query) {
-      return NextResponse.json([])
-    }
+    const query = searchParams.get("q")?.trim()
+    if (!query) return NextResponse.json([])
 
     const documents = await prisma.document.findMany({
       where: {
-        userId: user.id,
         isArchived: false,
-        title: {
-          contains: query,
-          mode: "insensitive",
+        OR: [
+          { userId: user.id },
+          { collaborators: { some: { userId: user.id } } },
+        ],
+        AND: {
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { contentText: { contains: query, mode: "insensitive" } },
+          ],
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -32,10 +35,26 @@ export async function GET(request: Request) {
         title: true,
         icon: true,
         parentId: true,
+        contentText: true,
       },
     })
 
-    return NextResponse.json(documents)
+    const results = documents.map((doc) => {
+      const contentSnippet = doc.contentText
+        ? buildSnippet(doc.contentText, query)
+        : null
+      return {
+        id: doc.id,
+        title: doc.title,
+        icon: doc.icon,
+        parentId: doc.parentId,
+        snippet: contentSnippet,
+        // If there is no content snippet, the row matched on the title.
+        matchedIn: contentSnippet ? ("content" as const) : ("title" as const),
+      }
+    })
+
+    return NextResponse.json(results)
   } catch (error) {
     console.error("Search error:", error)
     return NextResponse.json(
