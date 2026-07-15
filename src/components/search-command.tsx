@@ -13,6 +13,36 @@ interface SearchResult {
   title: string
   icon: string | null
   parentId: string | null
+  snippet: string | null
+  matchedIn: "title" | "content"
+}
+
+// Splits a plain-text snippet on the query (case-insensitive) and wraps
+// matches in a <mark>. Renders as React children (text nodes + elements),
+// never dangerouslySetInnerHTML, so this is safe even though the snippet
+// contains raw document content.
+function highlight(snippet: string, query: string) {
+  if (!query) return snippet
+  const parts: React.ReactNode[] = []
+  const lower = snippet.toLowerCase()
+  const q = query.toLowerCase()
+  let i = 0
+  let key = 0
+  while (i < snippet.length) {
+    const idx = lower.indexOf(q, i)
+    if (idx === -1) {
+      parts.push(snippet.slice(i))
+      break
+    }
+    if (idx > i) parts.push(snippet.slice(i, idx))
+    parts.push(
+      <mark key={key++} className="rounded bg-accent/20 text-foreground">
+        {snippet.slice(idx, idx + query.length)}
+      </mark>
+    )
+    i = idx + query.length
+  }
+  return parts
 }
 
 export function SearchCommand() {
@@ -141,14 +171,21 @@ export function SearchCommand() {
             <button
               key={result.id}
               onClick={() => handleSelect(result.id)}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
                 index === selectedIndex
                   ? "bg-accent/10 text-foreground"
                   : "text-foreground/80 hover:bg-foreground/[0.04]"
               }`}
             >
               <PageIcon icon={result.icon} size={16} />
-              <span className="truncate">{result.title}</span>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate">{result.title}</span>
+                {result.snippet && (
+                  <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    {highlight(result.snippet, query)}
+                  </span>
+                )}
+              </div>
             </button>
           ))}
         </div>
