@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const archived = searchParams.get("archived") === "true"
     const shared = searchParams.get("shared") === "true"
     const all = searchParams.get("all") === "true"
+    const recent = searchParams.get("recent") === "true"
 
     // Paylaşılan dokümanlar
     if (shared) {
@@ -36,6 +37,23 @@ export async function GET(request: Request) {
           icon: true,
           parentId: true,
         },
+      })
+      return NextResponse.json(documents)
+    }
+
+    // Recently updated documents
+    if (recent) {
+      const documents = await prisma.document.findMany({
+        where: {
+          isArchived: false,
+          OR: [
+            { userId: user.id },
+            { collaborators: { some: { userId: user.id } } },
+          ],
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 6,
+        select: { id: true, title: true, icon: true, updatedAt: true, parentId: true },
       })
       return NextResponse.json(documents)
     }
