@@ -92,7 +92,8 @@ async function checkAncestorAccess(
  * itself. Bounded depth to guard against cycles.
  */
 export async function getAncestors(
-  parentId: string | null
+  parentId: string | null,
+  userId: string
 ): Promise<{ id: string; title: string; icon: string | null }[]> {
   const chain: { id: string; title: string; icon: string | null }[] = []
   let currentId = parentId
@@ -103,6 +104,10 @@ export async function getAncestors(
       select: { id: true, title: true, icon: true, parentId: true },
     })
     if (!parent) break
+    // Only include ancestors the user can actually access; stop at the first
+    // inaccessible one so the breadcrumb never leaks hidden parent metadata.
+    const access = await getDocumentWithAccess(parent.id, userId)
+    if (!access) break
     chain.push({ id: parent.id, title: parent.title, icon: parent.icon })
     currentId = parent.parentId
     depth++

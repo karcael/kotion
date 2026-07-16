@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       )
     }
 
-    const ancestors = await getAncestors(access.document.parentId)
+    const ancestors = await getAncestors(access.document.parentId, user.id)
     return NextResponse.json({ ...access.document, role: access.role, ancestors })
   } catch (error) {
     console.error("Get document error:", error)
