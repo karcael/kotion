@@ -5,6 +5,7 @@ Running record of important decisions and changes. Check this file before starti
 ## Current state
 
 - **Version 1.5.0**, on `main` (pushed to github.com/karcael/kotion).
+- **Deployed** on the Ubuntu VM (`~/kotion`, compose project `kotion`) since 2026-07-16, running commit `5f88e3d`.
 - Self-hosted Notion alternative: Next.js 16 (App Router, Turbopack), React 19, TypeScript 5.9, Tiptap 3.20, Prisma 7 + PostgreSQL 17, Tailwind 4, Zustand, JWT (jose + bcryptjs), Docker Compose + Cloudflare Tunnel.
 
 ## History & key decisions
@@ -26,11 +27,24 @@ Built via subagent-driven development (16 tasks, per-task review, opus final rev
 4. **Recent documents** - `/api/documents?recent=true`, welcome-screen "Kaldığın yerden devam et" with relative time.
 - New infra: **Vitest** (dev-only) - 18 tests for pure helpers; shared `getEditorExtensions()` factory (editor + export use the same schema).
 
+### v1.4.1 -> v1.5.0 production deploy (2026-07-16)
+First deploy since v1.4.1. `db push` added the single new column (`Document.contentText`, nullable) with no data loss, and `npm run db:backfill-content-text` filled it for the 44 existing documents with content. Named volumes (`kotion_postgres-data`, `kotion_uploads`) and `JWT_SECRET` were unchanged, so sessions survived.
+
+Three bugs surfaced that only appear in a Docker/production build; all three are fixed on `main`:
+1. **`jwt-secret.ts` broke `next build`** - the v1.4.1 audit moved the secret check to module scope, but `next build` evaluates every route module while collecting page data and no runtime env vars exist then, so the image build died on "Failed to collect page data". Now resolved lazily and cached (`getJwtSecret()`); the fail-fast guard still applies at runtime. Verified: env vars are NOT inlined into the build output, so a build-time placeholder would have been a trap (it would look fine and ship the wrong secret).
+2. **`prisma.config.ts` broke container startup** - the Next.js standalone output copies the whole project root, so the config landed in the slim runner, where the Prisma 7 CLI auto-loads it. It imports `dotenv` (not copied) and `prisma/config` (installed globally, unresolvable from `/app`), so `db push` failed and `node server.js` never ran. The Dockerfile now deletes it; the startup command already passes `--schema` and `--url` explicitly.
+3. **App healthcheck always failed** - the container resolves `localhost` to `::1` first while the standalone server binds to `0.0.0.0` (IPv4 only), so a serving container was marked unhealthy. Probe now targets `127.0.0.1`.
+
+Deploy procedure: back up first (`pg_dump` + `docker run --rm -v kotion_uploads:/from -v <dest>:/to alpine tar czf ...`), then `git pull` (it also updates `docker-compose.yml`/`Dockerfile`; `.env` is gitignored and survives), then `docker compose up -d --build`. The backfill script is not in the runner image - run it from the builder stage: `docker build --target builder -t kotion-backfill . && docker run --rm --network kotion_default -e DATABASE_URL=... kotion-backfill npx tsx scripts/backfill-content-text.ts`.
+
 ## Conventions
 - User-facing strings Turkish (sentence-final period, no em/en dash). Code and comments English. Clickables get `cursor-pointer`; icon-only buttons get `aria-label`; in-app modals, never `window.confirm/alert`.
 - Git commits carry no AI signature / Co-Authored-By.
 
 ## Gotchas
+- **Never validate a required env var at module scope.** `next build` evaluates every route module while collecting page data, with no runtime env set, so a module-scope `throw` fails the build instead of the request. Resolve on first use. `npm run build` passes locally either way (Next loads `.env`); reproduce the Docker condition with `JWT_SECRET="" npx next build`.
+- The Next.js standalone output copies the **whole project root** into the image, so root-level config files (e.g. `prisma.config.ts`) land in the runner even though the Dockerfile never copies them. The Prisma 7 CLI auto-loads such a config and fails if its imports are absent from the slim runtime.
+- Inside the container `localhost` resolves to `::1` first, but the server binds IPv4-only. Health probes and any in-container HTTP call must use `127.0.0.1`.
 - Prisma 7 `db push` does NOT auto-generate the client - run `prisma generate` and restart the dev server after a schema change.
 - `generateHTML` is imported from `@tiptap/core` (transitive dep; add to package.json deps if using pnpm).
 - keepalive fetch has a ~64KB body limit (used only for `beforeunload` flush).
