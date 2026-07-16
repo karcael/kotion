@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { ImageIcon, Smile, X, Upload, Share2 } from "lucide-react"
+import { ImageIcon, Smile, X, Upload, Share2, Download } from "lucide-react"
 import { IconPicker } from "./icon-picker"
 import { ImageUploadDialog } from "./image-upload-dialog"
 import { ShareDialog } from "./share-dialog"
 import { Title } from "./title"
 import { PageIcon, parseIcon } from "./page-icon"
 import { useSidebar } from "@/stores/use-sidebar"
+import { exportAsHTML, exportAsPDF } from "@/lib/export"
 
 interface ToolbarProps {
   document: {
@@ -16,29 +17,81 @@ interface ToolbarProps {
     icon: string | null
     coverImage: string | null
   }
+  content: unknown
   onUpdate: (updates: Record<string, unknown>) => void
   isOwner?: boolean
 }
 
-export function Toolbar({ document, onUpdate, isOwner = true }: ToolbarProps) {
+export function Toolbar({ document, content, onUpdate, isOwner = true }: ToolbarProps) {
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [showIconImageUpload, setShowIconImageUpload] = useState(false)
   const [showCoverUpload, setShowCoverUpload] = useState(false)
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const setTitleOverride = useSidebar((s) => s.setTitleOverride)
 
   return (
     <div className="relative pb-4 pt-10">
-      {/* Share button: top-right, owner only (invite/manage is owner-only) */}
-      {isOwner && (
-        <button
-          onClick={() => setShowShareDialog(true)}
-          className="absolute right-0 top-10 z-10 flex cursor-pointer items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-all hover:bg-accent/20 active:scale-95"
-        >
-          <Share2 className="h-3.5 w-3.5" />
-          Paylaş
-        </button>
-      )}
+      {/* Top-right toolbar actions: export (all roles) and share (owner only) */}
+      <div className="absolute right-0 top-10 z-10 flex items-center gap-2">
+        <div className="relative">
+          <button
+            onClick={() => setShowExport((v) => !v)}
+            aria-label="Dışa aktar"
+            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-foreground/5 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:bg-foreground/10 hover:text-foreground active:scale-95"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Dışa Aktar
+          </button>
+          {showExport && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowExport(false)} />
+              <div className="animate-scale-in absolute right-0 top-full z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-border/60 bg-popover p-1 shadow-xl">
+                <button
+                  disabled={exporting}
+                  onClick={async () => {
+                    setExporting(true)
+                    try {
+                      await exportAsHTML({ ...document, content })
+                    } finally {
+                      setExporting(false)
+                      setShowExport(false)
+                    }
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-foreground/5 disabled:opacity-50"
+                >
+                  HTML olarak indir
+                </button>
+                <button
+                  disabled={exporting}
+                  onClick={async () => {
+                    setExporting(true)
+                    try {
+                      await exportAsPDF({ ...document, content })
+                    } finally {
+                      setExporting(false)
+                      setShowExport(false)
+                    }
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-foreground/5 disabled:opacity-50"
+                >
+                  PDF olarak kaydet
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+        {isOwner && (
+          <button
+            onClick={() => setShowShareDialog(true)}
+            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-all hover:bg-accent/20 active:scale-95"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Paylaş
+          </button>
+        )}
+      </div>
 
       <div className="group relative">
         {/* Sayfa ikonu (emoji veya görsel) */}

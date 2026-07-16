@@ -262,6 +262,7 @@ export default function DocumentPage() {
       <div className="mx-auto max-w-4xl px-4 md:px-8 lg:px-12">
         <Toolbar
           document={document}
+          content={document.content}
           onUpdate={updateDocument}
           isOwner={document.role === "OWNER"}
         />
