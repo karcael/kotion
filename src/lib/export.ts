@@ -40,11 +40,11 @@ const EXPORT_STYLES = `
 
 export function buildDocumentHTML(doc: ExportDoc, bodyHTML: string): string {
   const cover = doc.coverImage
-    ? `<img class="cover" src="${doc.coverImage}" alt="" />`
+    ? `<img class="cover" src="${escapeHtml(doc.coverImage)}" alt="" />`
     : ""
   const iconPrefix =
     doc.icon && !doc.icon.startsWith("/") && !doc.icon.startsWith("http")
-      ? `${doc.icon} `
+      ? `${escapeHtml(doc.icon)} `
       : ""
   const safeTitle = escapeHtml(doc.title || "Adsız")
   return `<!doctype html>
@@ -58,7 +58,18 @@ export function buildDocumentHTML(doc: ExportDoc, bodyHTML: string): string {
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+}
+
+// True when `src` resolves to the same origin as the running app (as opposed
+// to merely starting with the same characters, which `startsWith` would
+// wrongly accept for e.g. https://<origin>.evil.com/...).
+function isAppInternal(src: string): boolean {
+  try {
+    return new URL(src, location.href).origin === location.origin
+  } catch {
+    return false
+  }
 }
 
 // Fetches an app image and returns a data: URI; falls back to the original url.
@@ -91,7 +102,7 @@ export async function documentToHTML(doc: ExportDoc): Promise<string> {
   await Promise.all(
     imgs.map(async (img) => {
       const src = img.getAttribute("src") || ""
-      if (src.startsWith("/api/files/") || src.startsWith(location.origin)) {
+      if (isAppInternal(src)) {
         img.setAttribute("src", await toDataUri(src))
       }
     })
@@ -99,7 +110,7 @@ export async function documentToHTML(doc: ExportDoc): Promise<string> {
   bodyHTML = container.innerHTML
 
   let coverImage = doc.coverImage
-  if (coverImage && (coverImage.startsWith("/api/files/") || coverImage.startsWith(location.origin))) {
+  if (coverImage && isAppInternal(coverImage)) {
     coverImage = await toDataUri(coverImage)
   }
 
