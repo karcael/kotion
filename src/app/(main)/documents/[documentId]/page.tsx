@@ -5,11 +5,18 @@ import { useParams, useRouter } from "next/navigation"
 import { Toolbar } from "@/components/toolbar"
 import { Cover } from "@/components/cover"
 import { Banner } from "@/components/banner"
+import { Breadcrumb } from "@/components/breadcrumb"
 import { Editor } from "@/components/editor/editor"
 import { Spinner } from "@/components/spinner"
 import { useSidebar } from "@/stores/use-sidebar"
 import { useSession } from "@/stores/use-session"
 import { toast } from "sonner"
+
+interface Crumb {
+  id: string
+  title: string
+  icon: string | null
+}
 
 interface Document {
   id: string
@@ -21,6 +28,7 @@ interface Document {
   isFavorite: boolean
   isPublished: boolean
   role?: string
+  ancestors?: Crumb[]
 }
 
 export default function DocumentPage() {
@@ -260,6 +268,10 @@ export default function DocumentPage() {
       )}
 
       <div className="mx-auto max-w-4xl px-4 md:px-8 lg:px-12">
+        <Breadcrumb
+          ancestors={document.ancestors ?? []}
+          current={{ title: document.title, icon: document.icon }}
+        />
         <Toolbar
           document={document}
           content={document.content}
