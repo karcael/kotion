@@ -116,3 +116,47 @@ export async function documentToHTML(doc: ExportDoc): Promise<string> {
 
   return buildDocumentHTML({ ...doc, coverImage }, bodyHTML)
 }
+
+export async function exportAsHTML(doc: ExportDoc): Promise<void> {
+  const html = await documentToHTML(doc)
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${slugify(doc.title)}.html`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+export async function exportAsPDF(doc: ExportDoc): Promise<void> {
+  const html = await documentToHTML(doc)
+  // Hidden same-document iframe avoids popup blockers.
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  document.body.appendChild(iframe)
+  const doc2 = iframe.contentWindow?.document
+  if (!doc2) {
+    iframe.remove()
+    return
+  }
+  doc2.open()
+  doc2.write(html)
+  doc2.close()
+  // Wait for images/layout before printing.
+  const win = iframe.contentWindow!
+  const cleanup = () => setTimeout(() => iframe.remove(), 1000)
+  win.onafterprint = cleanup
+  setTimeout(() => {
+    win.focus()
+    win.print()
+    // Fallback cleanup if onafterprint never fires.
+    setTimeout(cleanup, 60000)
+  }, 300)
+}
