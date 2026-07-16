@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getSession } from "@/lib/auth"
-import { getDocumentWithAccess } from "@/lib/document-access"
+import { getAncestors, getDocumentWithAccess } from "@/lib/document-access"
 import { extractPlainText } from "@/lib/tiptap-text"
 
 type RouteParams = { params: Promise<{ documentId: string }> }
@@ -24,7 +24,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       )
     }
 
-    return NextResponse.json({ ...access.document, role: access.role })
+    const ancestors = await getAncestors(access.document.parentId)
+    return NextResponse.json({ ...access.document, role: access.role, ancestors })
   } catch (error) {
     console.error("Get document error:", error)
     return NextResponse.json(

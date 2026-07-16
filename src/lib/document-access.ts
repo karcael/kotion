@@ -88,6 +88,29 @@ async function checkAncestorAccess(
 }
 
 /**
+ * Collects the parent chain of a document, root first, excluding the document
+ * itself. Bounded depth to guard against cycles.
+ */
+export async function getAncestors(
+  parentId: string | null
+): Promise<{ id: string; title: string; icon: string | null }[]> {
+  const chain: { id: string; title: string; icon: string | null }[] = []
+  let currentId = parentId
+  let depth = 0
+  while (currentId && depth < 50) {
+    const parent = await prisma.document.findUnique({
+      where: { id: currentId },
+      select: { id: true, title: true, icon: true, parentId: true },
+    })
+    if (!parent) break
+    chain.push({ id: parent.id, title: parent.title, icon: parent.icon })
+    currentId = parent.parentId
+    depth++
+  }
+  return chain.reverse()
+}
+
+/**
  * Kullanıcının erişebildiği paylaşılan belgeleri listeler.
  */
 export async function getSharedDocuments(userId: string) {
