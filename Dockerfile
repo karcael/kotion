@@ -30,6 +30,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# The standalone output carries the whole project root along, including
+# prisma.config.ts. This runner has neither dotenv nor a local prisma package,
+# so the Prisma CLI would abort on startup while loading that config. The schema
+# and the url are passed explicitly to `db push` below, so the config is unused
+# here and is dropped rather than having its dependencies shipped.
+RUN rm -f ./prisma.config.ts
+
 # Prisma şeması ve yapılandırması
 COPY --from=builder /app/prisma ./prisma
 
