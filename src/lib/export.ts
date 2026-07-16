@@ -35,6 +35,17 @@ const EXPORT_STYLES = `
   blockquote { border-left: 3px solid #d0d7de; margin: 0; padding-left: 12px; color: #57606a; }
   ul[data-type="taskList"] { list-style: none; padding-left: 0; }
   .cover { width: 100%; max-height: 280px; object-fit: cover; border-radius: 12px; margin-bottom: 24px; }
+  /* Multi-column layout: lay columns out side by side instead of the browser default of stacking divs. */
+  .columns-layout { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 16px; margin: 1em 0; }
+  .column-block { min-width: 0; }
+  /* Page-link block */
+  .page-link-block { margin: 0.75em 0; }
+  .page-link-inner { display: inline-flex; align-items: center; gap: 0.875rem; padding: 0.875rem 1.125rem;
+    border-radius: 12px; border: 1px solid #e8e8e3; background: #f5f5f5; text-decoration: none; color: #37352f; }
+  .page-link-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border-radius: 8px; background: #ffffff; border: 1px solid #e8e8e3; font-size: 16px; }
+  .page-link-title { font-weight: 500; }
+  .page-link-arrow { color: #91918e; }
   @media print { body { margin: 0; max-width: none; } pre, table { page-break-inside: avoid; } }
 `
 

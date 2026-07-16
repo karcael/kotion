@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { ImageIcon, Smile, X, Upload, Share2, Download } from "lucide-react"
 import { IconPicker } from "./icon-picker"
 import { ImageUploadDialog } from "./image-upload-dialog"
@@ -54,6 +55,8 @@ export function Toolbar({ document, content, onUpdate, isOwner = true }: Toolbar
                     setExporting(true)
                     try {
                       await exportAsHTML({ ...document, content })
+                    } catch {
+                      toast.error("Dışa aktarma başarısız.")
                     } finally {
                       setExporting(false)
                       setShowExport(false)
@@ -69,6 +72,8 @@ export function Toolbar({ document, content, onUpdate, isOwner = true }: Toolbar
                     setExporting(true)
                     try {
                       await exportAsPDF({ ...document, content })
+                    } catch {
+                      toast.error("Dışa aktarma başarısız.")
                     } finally {
                       setExporting(false)
                       setShowExport(false)

@@ -25,7 +25,7 @@ export function Breadcrumb({ ancestors, current }: BreadcrumbProps) {
   }
 
   return (
-    <nav className="flex items-center gap-1 pt-6 text-xs text-muted-foreground">
+    <nav aria-label="Sayfa yolu" className="flex items-center gap-1 pt-6 text-xs text-muted-foreground">
       <Link href="/documents" className="cursor-pointer rounded px-1 py-0.5 hover:bg-foreground/5 hover:text-foreground">
         Notlar
       </Link>
