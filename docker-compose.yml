@@ -28,8 +28,11 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
+      # 127.0.0.1, not localhost: the container resolves localhost to ::1 first,
+      # while the server binds to 0.0.0.0 (IPv4 only), so the probe would be
+      # refused and report a healthy app as unhealthy.
       test:
-        ["CMD-SHELL", "wget -q --spider http://localhost:3000/login || exit 1"]
+        ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/login || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
