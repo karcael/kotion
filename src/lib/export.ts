@@ -35,8 +35,14 @@ const EXPORT_STYLES = `
   blockquote { border-left: 3px solid #d0d7de; margin: 0; padding-left: 12px; color: #57606a; }
   ul[data-type="taskList"] { list-style: none; padding-left: 0; }
   .cover { width: 100%; max-height: 280px; object-fit: cover; border-radius: 12px; margin-bottom: 24px; }
-  /* Multi-column layout: lay columns out side by side instead of the browser default of stacking divs. */
-  .columns-layout { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 16px; margin: 1em 0; }
+  /* Multi-column layout. Mirrors the editor: a grid whose columns are sized by
+     the data-columns count, unless an inline grid-template-columns (from the
+     widths attribute) overrides it. The editor's container-query width/margins
+     are intentionally dropped here since the export has no sidebar. */
+  .columns-layout { display: grid; gap: 1rem; margin: 1em 0; }
+  .columns-layout[data-columns="2"] { grid-template-columns: 1fr 1fr; }
+  .columns-layout[data-columns="3"] { grid-template-columns: 1fr 1fr 1fr; }
+  .columns-layout[data-columns="4"] { grid-template-columns: 1fr 1fr 1fr 1fr; }
   .column-block { min-width: 0; }
   /* Page-link block */
   .page-link-block { margin: 0.75em 0; }
