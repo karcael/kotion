@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { useSidebar } from "@/stores/use-sidebar"
 import { Logo } from "@/components/logo"
+import { PageIcon } from "@/components/page-icon"
+import { formatRelativeTime } from "@/lib/format-relative-time"
 import {
   templates,
   categoryLabels,
@@ -22,6 +24,16 @@ export default function DocumentsPage() {
   const [activeCategory, setActiveCategory] = useState<
     TemplateCategory | "all"
   >("all")
+  const [recents, setRecents] = useState<
+    { id: string; title: string; icon: string | null; updatedAt: string }[]
+  >([])
+
+  useEffect(() => {
+    fetch("/api/documents?recent=true")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setRecents(Array.isArray(data) ? data : []))
+      .catch(() => setRecents([]))
+  }, [])
 
   const filtered =
     activeCategory === "all"
@@ -84,6 +96,34 @@ export default function DocumentsPage() {
             {creating === "__blank__" ? "Oluşturuluyor..." : "Boş Sayfa Oluştur"}
           </button>
         </div>
+
+        {/* Recent documents section */}
+        {recents.length > 0 && (
+          <div className="mb-10">
+            <h3 className="mb-4 text-lg font-semibold">
+              Kaldığın yerden devam et
+            </h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {recents.map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={() => router.push(`/documents/${doc.id}`)}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-card p-3 text-left transition-all hover:border-accent/40 hover:bg-accent/5"
+                >
+                  <PageIcon icon={doc.icon} size={20} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {doc.title || "Adsız"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatRelativeTime(doc.updatedAt)}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Templates section */}
         <div>
