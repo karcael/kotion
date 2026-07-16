@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { prisma } from "./prisma"
-import { JWT_SECRET } from "./jwt-secret"
+import { getJwtSecret } from "./jwt-secret"
 
 const COOKIE_NAME = "kotion-token"
 
@@ -12,12 +12,12 @@ export async function createToken(userId: string, email: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET)
+    .sign(getJwtSecret())
 }
 
 export async function verifyToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
+    const { payload } = await jwtVerify(token, getJwtSecret())
     return payload as { userId: string; email: string }
   } catch {
     return null

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
-import { JWT_SECRET } from "@/lib/jwt-secret"
+import { getJwtSecret } from "@/lib/jwt-secret"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/") {
     if (token) {
       try {
-        await jwtVerify(token, JWT_SECRET)
+        await jwtVerify(token, getJwtSecret())
         return NextResponse.redirect(new URL("/documents", request.url))
       } catch {
         return NextResponse.redirect(new URL("/login", request.url))
@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
     if (token) {
       try {
-        await jwtVerify(token, JWT_SECRET)
+        await jwtVerify(token, getJwtSecret())
         return NextResponse.redirect(new URL("/documents", request.url))
       } catch {
         // Token geçersiz, auth sayfasına devam et
@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, JWT_SECRET)
+    await jwtVerify(token, getJwtSecret())
     return NextResponse.next()
   } catch {
     if (isApiRoute) {
