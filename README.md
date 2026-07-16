@@ -6,7 +6,7 @@ A self-hosted Notion alternative built with Next.js. Write, organize, and share 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED)
-![Version](https://img.shields.io/badge/Version-1.4.0-green)
+![Version](https://img.shields.io/badge/Version-1.5.0-green)
 
 ## Features
 
@@ -39,12 +39,15 @@ A self-hosted Notion alternative built with Next.js. Write, organize, and share 
 
 ### Organization
 - Nested page hierarchy with sidebar tree navigation
+- Breadcrumb trail above each page for quick ancestor navigation
+- Recent documents ("continue where you left off") on the welcome screen
 - Drag & drop page reordering in sidebar
 - Page icons (emoji, colored Lucide icon, or custom image)
 - Cover images
 - Favorites
 - Trash & restore (soft delete)
-- Search (`Ctrl+K` / `Cmd+K`)
+- Full-text search across page titles and content, with highlighted match snippets (`Ctrl+K` / `Cmd+K`)
+- Export any page as a self-contained HTML file or as PDF (via the browser print dialog)
 
 ### Sharing & Collaboration
 - Share pages via email with Editor or Viewer roles
