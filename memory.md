@@ -40,6 +40,7 @@ Deploy procedure: back up first (`pg_dump` + `docker run --rm -v kotion_uploads:
 ## Conventions
 - User-facing strings Turkish (sentence-final period, no em/en dash). Code and comments English. Clickables get `cursor-pointer`; icon-only buttons get `aria-label`; in-app modals, never `window.confirm/alert`.
 - Git commits carry no AI signature / Co-Authored-By.
+- Env files (2026-09-29): `.env` has never been committed and stays git-ignored (`.env`, `.env.*`, except `.env.example`). The current copy lives in the Bitwarden secure note "env / Kotion"; update the note whenever `.env` changes. `.env.example` lists every key.
 
 ## Gotchas
 - **Never validate a required env var at module scope.** `next build` evaluates every route module while collecting page data, with no runtime env set, so a module-scope `throw` fails the build instead of the request. Resolve on first use. `npm run build` passes locally either way (Next loads `.env`); reproduce the Docker condition with `JWT_SECRET="" npx next build`.
