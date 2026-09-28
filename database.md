@@ -66,7 +66,7 @@ runtime by one of the two paths above.
 **Connection string format** (`.env.example`):
 
 ```
-DATABASE_URL="postgresql://kotion:kotion@localhost:5432/kotion"
+DATABASE_URL="postgresql://user:password@localhost:5432/db"
 ```
 
 **Table names** match the Prisma model names verbatim (`User`, `Document`,
